@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 3000;
 app.engine("hbs", exphbs.engine({
   extname: "hbs",
   defaultLayout: "main",
-  layoutsDir: path.join(__dirname, "views", "layouts")
+  layoutsDir: path.join(__dirname, "views", "layouts"),
+  partialsDir: path.join(__dirname, "views", "partials")
 }));
 app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
@@ -17,7 +18,10 @@ app.set("views", path.join(__dirname, "views"));
 // Middleware
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
-
+app.use((req, res, next) => {
+  res.locals.year = new Date().getFullYear();
+  next();
+});
 // Routes
 app.get("/", (req, res) => {
   res.redirect("/login");
