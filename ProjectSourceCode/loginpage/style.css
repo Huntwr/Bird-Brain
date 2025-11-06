@@ -1,20 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
-
+body { background: red !important; }
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html, body {
+  height: 100%;
+}
 
 body {
   font-family: 'Inter', sans-serif;
   background: linear-gradient(135deg, #d7ccc8, #a1887f);
-  height: 100vh;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #4e342e;
+}
+
+/* Center the card container content */
+main {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #4e342e;
 }
 
 .container {
@@ -106,3 +117,13 @@ button:hover {
   text-decoration: underline;
 }
 
+/* Footer stays pinned to bottom */
+.site-footer {
+  background-color: #5c4033;
+  color: white;
+  text-align: center;
+  padding: 15px 0;
+  font-size: 0.9rem;
+  width: 100%;
+  margin-top: auto;
+}
