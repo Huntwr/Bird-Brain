@@ -1,0 +1,38 @@
+/* Navigation Bar Styles */
+
+.header {
+    background-color: #4a90e2;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-radius: 12px;
+}
+
+.nav-left {
+    display: flex;
+    gap: 20px;
+}
+
+.nav-button {
+    padding: 8px 16px;
+    border: 2px solid white;
+    background: transparent;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.nav-button:hover {
+    background-color: white;
+    color: #4a90e2;
+}
+
+.profile-info {
+    padding: 8px 16px;
+    border: 2px solid white;
+    border-radius: 8px;
+}
