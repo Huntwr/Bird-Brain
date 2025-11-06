@@ -1,51 +1,66 @@
-const express = require("express");
-const exphbs = require("express-handlebars");
-const path = require("path");
+const express = require('express');
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const bcryptjs = require('bcryptjs');
+const pgp = require('pg-promise')();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Set up Handlebars engine
-app.engine("hbs", exphbs.engine({
-  extname: "hbs",
-  defaultLayout: "main",
-  layoutsDir: path.join(__dirname, "views", "layouts"),
-  partialsDir: path.join(__dirname, "views", "partials")
-}));
-app.set("view engine", "hbs");
-app.set("views", path.join(__dirname, "views"));
-
-// Middleware
-app.use(express.static(path.join(__dirname, "public")));
-app.use(express.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-  res.locals.year = new Date().getFullYear();
-  next();
-});
-// Routes
-app.get("/", (req, res) => {
-  res.redirect("/login");
+// ==================== DATABASE CONNECTION ====================
+const db = pgp({
+  host: 'db', // matches service name in docker-compose.yaml
+  port: 5432,
+  database: process.env.POSTGRES_DB,
+  user: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
 });
 
-app.get("/login", (req, res) => {
-  res.render("login", { title: "Log In" });
+// ==================== MIDDLEWARE ====================
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'super duper secret!',
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+
+
+app.get('/welcome', (req, res) => {
+  res.json({ status: 'success', message: 'Welcome!' });
 });
 
-app.get("/signup", (req, res) => {
-  res.render("signup", { title: "Sign Up" });
+app.post('/register', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password || username.trim() === '' || password.trim() === '') {
+    return res.status(400).json({ message: 'Invalid input' });
+  }
+
+  try {
+    const hashed = await bcryptjs.hash(password, 10);
+
+    await db.none('INSERT INTO users (username, password) VALUES ($1, $2)', [username, hashed]);
+
+    res.status(200).json({ message: 'Success' });
+  } catch (error) {
+    console.error('Register error:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-  console.log("Login attempt:", email, password);
-  res.redirect("/"); // placeholder
+app.get('/test', (req, res) => {
+  res.redirect('/login');
 });
 
-app.post("/signup", (req, res) => {
-  const { name, email, password } = req.body;
-  console.log("New user:", name, email);
-  res.redirect("/login");
+app.get('/login', (req, res) => {
+  res.status(200).send('<html><body><h1>Login Page</h1></body></html>');
 });
 
-// Start server
-app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
+module.exports = app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
