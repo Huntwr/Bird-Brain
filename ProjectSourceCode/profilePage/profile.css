@@ -1,1 +1,87 @@
-/* Styles for the user profile page will go here */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f4f4f4;
+  margin: 0;
+  padding: 0;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  margin: 2rem auto;
+  max-width: 800px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Placeholder for where the profile picture will go */
+.avatar-placeholder {
+  width: 100px;
+  height: 100px;
+  background: #e0e0e0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.username {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.description {
+  margin: 0.3rem 0 0 0;
+  color: #777;
+}
+
+/* ---------- Posts Section ---------- */
+.posts {
+  max-width: 800px;
+  margin: 0 auto 3rem;
+  padding: 0 1rem;
+}
+
+.section-title {
+  border-bottom: 2px solid #ccc;
+  padding-bottom: 0.25rem;
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+}
+
+.post {
+  background: #ffffff;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Placeholder for where the bird image will go */
+.post-placeholder {
+  width: 100%;
+  height: 150px;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 0.9rem;
+  border-radius: 6px;
+}
+
+.caption {
+  margin-top: 0.5rem;
+  color: #333;
+}
