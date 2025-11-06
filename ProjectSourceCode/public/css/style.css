@@ -20,7 +20,7 @@ body {
   color: #4e342e;
 }
 
-/* Center the card container content */
+
 main {
   flex: 1;
   display: flex;
@@ -117,13 +117,12 @@ button:hover {
   text-decoration: underline;
 }
 
-/* Footer stays pinned to bottom */
 .site-footer {
-  color: #4e342e; /* optional: match your text color */
+  color: #4e342e; 
   text-align: center;
   padding: 15px 0;
   font-size: 0.9rem;
   width: 100%;
   margin-top: auto;
-  background: transparent; /* removes the brown box */
+  background: transparent;
 }
