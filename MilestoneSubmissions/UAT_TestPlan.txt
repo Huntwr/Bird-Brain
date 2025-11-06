@@ -1,0 +1,111 @@
+UAT Test Plan – Bird Brain Project
+Environment: Localhost by Docker Compose (Node.js, Express, PostgreSQL)
+
+
+Feature 1 – User Registration and Login
+
+Description:
+A new user should be able to create an account and then log in to access their profile.
+The system should store valid information, reject invalid input, and display clear feedback messages.
+
+Test Environment:
+Localhost (Dockerized Node.js + PostgreSQL)
+
+Test Data:
+1. Valid: username = “birdlover”, password = “flyhigh123”
+2. Invalid: blank fields or mismatched passwords
+
+Test Steps:
+
+Navigate to the registration page from the homepage.
+
+Enter valid information and submit the form.
+
+After registration, attempt to log in using the same credentials.
+
+Attempt to submit the form with missing fields.
+
+Expected Results:
+- Successful registration redirects to the login page.
+- Valid credentials on login open the user dashboard.
+- Invalid or blank fields show an on-screen error message.
+
+Actual Results:
+Registration and login worked correctly during local testing.
+Invalid submissions showed appropriate error messages.
+
+Feature 2 – Bird Posting and Viewing
+
+Description:
+Users can post a bird sighting with a photo, short description, and location, then view all posts from themselves and others.
+
+Test Environment:
+Localhost (Web app running in Docker, connected to PostgreSQL)
+
+Test Data:
+- Post title: “Blue Jay near Boulder Creek”
+- Description: “Saw a Blue Jay while walking near campus.”
+- Image: test_photo.jpg
+
+Test Steps:
+
+Log in as an existing user.
+
+Click “Add Bird” and fill out the form with the test data.
+
+Submit and return to the feed page.
+
+Verify that the new post appears with the correct image and description.
+
+Expected Results:
+- The post appears immediately in the user feed.
+- The uploaded photo and details display correctly.
+- Post persists after refreshing the page.
+
+Actual Results:
+Bird post appeared as expected in the feed and remained visible after refresh.
+
+Feature 3 – Interactive Map of Sightings
+
+Description:
+Users can view an interactive map showing pins for bird sightings shared by all users.
+Clicking a pin should display bird details and the name of the person who posted it.
+
+Test Environment:
+Localhost (Dockerized app using Mapbox API)
+
+Test Data:
+Example locations with bird names for testing.
+
+Test Steps:
+
+Log in and navigate to the map page.
+
+Confirm existing bird posts appear as pins.
+
+Click a pin to view the bird’s details.
+
+Add a new post with a unique location, then refresh the map to verify the new pin appears.
+
+Expected Results:
+- Map loads with all previous pins visible.
+- Each pin correctly displays the bird name, description, and user.
+- New sightings appear automatically after posting.
+
+Actual Results:
+Map displayed all test data correctly, and new bird pins appeared after posting.
+
+Information About User Acceptance Testers:
+
+The user acceptance testers were selected to represent the primary target audience for the Bird Brain application, that being university students, casual bird watchers, and nature enthusiasts who are interested in logging and viewing local bird sightings.
+
+Profiles: 
+
+College Student / Nature Enthusiast – Erik, 19
+A CU Boulder student who enjoys hiking around campus trails. Represents younger users who use Bird Brain casually to log local sightings and connect with peers who share an interest in wildlife. Focused on testing account creation, login, and navigation through the main pages.
+
+Casual Bird Watcher – Sarah, 28
+Enjoys weekend walks and occasionally photographs birds. Represents users with limited technical background who want a simple and intuitive experience. Focused on testing the “Add Bird” and “View Feed” features to ensure posting and viewing are straightforward.
+
+Outdoor Recreation Student – Jamie, 21
+Studies environmental science and often explores regional parks for class projects. Represents users who use Bird Brain to record and analyze bird activity as part of educational or conservation efforts. Focused on testing the map and filter options to ensure they help identify bird hotspots near campus.
