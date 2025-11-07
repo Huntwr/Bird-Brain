@@ -11,11 +11,11 @@ const PORT = process.env.PORT || 3000;
 
 // PostgreSQL setup
 const pool = new Pool({
-  user: process.env.DB_USER,
+  user: process.env.POSTGRES_USER,
+  password: process.env.POSTGRES_PASSWORD,
   host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT
+  port: process.env.DB_PORT,
+  database: process.env.POSTGRES_DB,
 });
 
 pool.connect()
@@ -85,23 +85,28 @@ app.post("/signup", async (req, res) => {
 });
 
 // Login POST
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body
   try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    if (result.rows.length === 0) return res.status(401).send("Invalid login");
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
+    const user = result.rows[0]
 
-    const user = result.rows[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).send("Invalid login");
+    if (!user) {
+      return res.send("<script>alert('User does not exist. Try again.'); window.location.href = '/login';</script>")
+    }
 
-    req.session.user = { id: user.id, name: user.name, email: user.email };
-    res.redirect("/home");
+    const match = await bcrypt.compare(password, user.password)
+    if (!match) {
+      return res.send("<script>alert('Incorrect password. Try again.'); window.location.href = '/login';</script>")
+    }
+
+    req.session.user = { id: user.id, name: user.name, email: user.email }
+    res.redirect('/home')
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
+    console.error('Login error:', err)
+    res.send("<script>alert('Server error. Please try again later.'); window.location.href = '/login';</script>")
   }
-});
+})
 
 // Logout
 app.get("/logout", (req, res) => {
@@ -144,6 +149,11 @@ app.get("/api/git", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch Git data" });
   }
 });
+
+app.use((err, req, res, next) => {
+  console.error('Unexpected error:', err)
+  res.status(500).send('Something went wrong. Please try again later.')
+})
 
 // Start server
 app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));

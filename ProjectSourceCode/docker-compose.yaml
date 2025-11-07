@@ -8,7 +8,7 @@ services:
       - '5432:5432'
     volumes:
       - group-project-data:/var/lib/postgresql/data
-      - ./src/init_data:/docker-entrypoint-initdb.d
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
   web:
     build: .
