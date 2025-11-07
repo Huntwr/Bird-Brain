@@ -1,0 +1,8 @@
+Meeting 2: 10/6/25
+Min count: 11:11 AM to 11:25 AM
+Week 2 Notes: 
+- Follow the new lab grading reqs
+- Make sure work is allocated correctly
+- Expect to demonstrate contributions at next weeks meeting
+- Try to avoid merge conflicts
+- Merge to main branch prior to meeting
