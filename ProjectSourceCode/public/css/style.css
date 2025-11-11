@@ -334,3 +334,65 @@ button:hover {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* === Fullscreen Map === */
+#map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  z-index: 0;
+}
+
+/* === Welcome Overlay === */
+.welcome-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 250, 245, 0.95);
+  padding: 2rem 3rem;
+  border-radius: 18px;
+  box-shadow: 0 10px 25px rgba(78, 52, 46, 0.25);
+  text-align: center;
+  z-index: 10;
+  max-width: 400px;
+}
+
+.welcome-overlay h1 {
+  color: #5d4037;
+  margin-bottom: 0.5rem;
+}
+
+.welcome-overlay .subtitle {
+  color: #8d6e63;
+  margin-bottom: 0.5rem;
+}
+
+/* Close (X) Button */
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: #5d4037;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+  color: #a1887f;
+}
+/* === Map Styling (with background margin) === */
+#map {
+  position: relative;
+  width: 90%;
+  height: 80vh;
+  margin: 2rem auto;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(78, 52, 46, 0.25);
+  z-index: 0;
+}
