@@ -153,6 +153,12 @@ app.get("/api/git", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch Git data" });
   }
 });
+// Mapbox API Key route
+app.get("/config", (req, res) => {
+  res.json({
+    mapboxKey: process.env.MAPBOX_API_KEY
+  });
+});
 
 app.use((err, req, res, next) => {
   console.error('Unexpected error:', err)
