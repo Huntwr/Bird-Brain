@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../commentPage/commentStyle.css">
     <link rel="stylesheet" href="../shared/navbarStyle.css">
     <link rel="stylesheet" href="friendsStyle.css">
+    <script src="friends.js"></script>
 </head>
 <body>
     <div class="container">
@@ -19,37 +20,36 @@
 
         <div class="content-area">
             <div class="friends-list">
-                <div class="friend-item">Friend 1</div>
-                <div class="friend-item">Friend 2</div>
-                <div class="friend-item">Friend 3</div>
-                <div class="friend-item">Friend 4</div>
+                <!-- Friends list will be dynamically loaded here -->
             </div>
 
             <div class="posts-section">
-                <div class="posts-header">
-                    <h3>Friend Name</h3>
-                    <div>
-                        <span>Posts (#)</span>
-                        <span>Likes (#)</span>
-                        <button class="like-button">♥</button>
-                    </div>
-                </div>
-
-                <div class="posts-grid">
-                    <div class="post-item">
-                        Bird<br>Post 1
-                    </div>
-                    <div class="post-item">
-                        Bird<br>Post 2
-                    </div>
-                    <div class="post-item">
-                        Bird<br>Post 3
-                    </div>
-                    <div class="post-item">
-                        Bird<br>Post 4
-                    </div>
-                </div>
+                <!-- Selected friend's posts will be dynamically loaded here -->
             </div>
+        </div>
+    </div>
+
+    <!-- Add Friend Modal -->
+    <div id="addFriendModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Friend</h2>
+                <span class="close" onclick="closeAddFriendModal()">&times;</span>
+            </div>
+            <form id="addFriendForm" onsubmit="handleAddFriendSubmit(event)">
+                <div class="form-group">
+                    <label for="friendName">Friend's Name:</label>
+                    <input type="text" id="friendName" name="friendName" placeholder="Enter their full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="friendUsername">Username:</label>
+                    <input type="text" id="friendUsername" name="friendUsername" placeholder="Enter their username" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeAddFriendModal()">Cancel</button>
+                    <button type="submit">Add Friend</button>
+                </div>
+            </form>
         </div>
     </div>
 </body>

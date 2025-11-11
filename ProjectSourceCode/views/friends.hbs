@@ -1,0 +1,46 @@
+<!-- Friends Page Content -->
+<link rel="stylesheet" href="/css/friendsStyle.css">
+<script src="/js/friends.js"></script>
+
+<div class="container">
+    <div class="friends-tabs">
+        <button class="tab active">Friends (#)</button>
+        <button class="tab">Favorites (#)</button>
+        <button class="tab">Requests (#)</button>
+        <button class="tab">Invite</button>
+    </div>
+
+    <div class="content-area">
+        <div class="friends-list">
+            <!-- Friends list will be dynamically loaded here -->
+        </div>
+
+        <div class="posts-section">
+            <!-- Selected friend's posts will be dynamically loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Add Friend Modal -->
+<div id="addFriendModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Friend</h2>
+            <span class="close" onclick="closeAddFriendModal()">&times;</span>
+        </div>
+        <form id="addFriendForm" onsubmit="handleAddFriendSubmit(event)">
+            <div class="form-group">
+                <label for="friendName">Friend's Name:</label>
+                <input type="text" id="friendName" name="friendName" placeholder="Enter their full name" required>
+            </div>
+            <div class="form-group">
+                <label for="friendUsername">Username:</label>
+                <input type="text" id="friendUsername" name="friendUsername" placeholder="Enter their username" required>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="closeAddFriendModal()">Cancel</button>
+                <button type="submit">Add Friend</button>
+            </div>
+        </form>
+    </div>
+</div>

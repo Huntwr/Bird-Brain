@@ -127,6 +127,10 @@ app.get("/comments", isAuthenticated, (req, res) => {
   res.render("comment", { title: "Comments" });
 });
 
+app.get("/friends", isAuthenticated, (req, res) => {
+  res.render("friends", { title: "Friends" });
+});
+
 // API Routes
 app.get("/api/user", isAuthenticated, (req, res) => {
   res.json({
