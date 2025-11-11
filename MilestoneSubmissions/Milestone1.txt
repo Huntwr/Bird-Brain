@@ -1,0 +1,18 @@
+Release notes week 1 for Bird Brain
+Finished the comment page (comment.html and commentStyle.css) and made sure it fits the overall site style
+
+Cleaned up CSS across different pages for consistent layout and colors
+
+Merged recent work from jackson1 and css-fixes branches into main
+
+Updated navigation so pages connect smoothly (comment, friends, profile, upload)
+
+Verified that everything runs correctly from the main branch with no broken links
+
+Organized files in ProjectSourceCode/ to keep structure clean and easy to follow
+
+Added updated milestone document (Bird Brain Software Dev 12-8.pdf) to the submission folder
+
+Checked that the GitHub project board matches our current sprint progress and completed tasks
+
+Next step is to start testing pages and finalize small visual updates

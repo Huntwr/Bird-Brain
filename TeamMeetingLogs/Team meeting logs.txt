@@ -1,4 +1,0 @@
-Team meeting logs: 
-Meeting 1: 9/30/25
-Min count: 11:11 AM to 11:25 AM
-Week 1 Notes: This week’s expectations are pretty relaxed. Everyone should aim for around 3–6 pushes and focus on making steady progress. The main goal is just to finish your own HTML page.
