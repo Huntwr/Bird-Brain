@@ -1,36 +1,28 @@
-<div class="container">
-  <div class="card">
-    <h1>Welcome to Bird Brain</h1>
-    <p class="subtitle">Track and share your bird sightings with friends!</p>
+<div id="map"></div>
 
-    <div class="button-group">
-      <a href="/log-bird"><button>Log a Bird</button></a>
-      <a href="/comments"><button>View Comments</button></a>
-    </div>
-  </div>
+<!-- Welcome Overlay -->
+<div id="welcome-card" class="welcome-overlay">
+  <button id="close-welcome" class="close-btn">×</button>
+  <h1>Welcome to Bird Brain</h1>
+  <p class="subtitle">Track and share your bird sightings with friends!</p>
 </div>
-
-<div id="map" style="width: 100%; height: 500px; margin-top: 2rem; border-radius: 12px;"></div>
 
 <script>
   async function initMap() {
     try {
-      // Fetch API key securely from backend
       const res = await fetch('/config');
       const data = await res.json();
 
       mapboxgl.accessToken = data.mapboxKey;
       const map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/outdoors-v12',
         center: [-105.2705, 40.0150], // Boulder, CO
         zoom: 10
       });
 
-      // Add controls (zoom in/out)
       map.addControl(new mapboxgl.NavigationControl());
 
-      // Add a test marker
       new mapboxgl.Marker()
         .setLngLat([-105.2705, 40.0150])
         .setPopup(new mapboxgl.Popup().setText('CU Boulder - Bird Brain HQ'))
@@ -41,4 +33,14 @@
   }
 
   initMap();
+
+  // Close Welcome overlay
+  document.addEventListener("DOMContentLoaded", () => {
+    const closeBtn = document.getElementById("close-welcome");
+    const welcomeCard = document.getElementById("welcome-card");
+
+    closeBtn.addEventListener("click", () => {
+      welcomeCard.style.display = "none";
+    });
+  });
 </script>
