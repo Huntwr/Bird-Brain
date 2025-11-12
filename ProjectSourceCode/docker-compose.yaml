@@ -23,3 +23,5 @@ services:
 
 volumes:
   group-project-data:
+
+#note that I had to comment out volumes 
