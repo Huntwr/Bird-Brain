@@ -1,0 +1,38 @@
+<link rel="stylesheet" href="/css/style.css">
+
+<div class="comment-container p-4 mt-4">
+
+  <header class="profile-header d-flex align-items-center gap-3 mb-4">
+      <div class="post-picture" style="width:120px; height:120px;">
+          Profile Picture Here
+      </div>
+
+      <div class="user-info">
+          <h1 class="username">{{user.name}}</h1>
+          <p class="description">User bio goes here.</p>
+      </div>
+  </header>
+
+  <main class="posts">
+      <h2 class="section-title mb-3">User Posts</h2>
+
+      <!-- Example post (placeholder for now) -->
+      <div class="comment p-3 rounded-3 mb-3">
+          <div class="pfp"></div>
+          <div class="comment-content">
+              <span class="comment-username">{{user.name}} wrote:</span>
+              <p class="comment-text">Post #1 description goes here.</p>
+          </div>
+      </div>
+
+      <div class="comment p-3 rounded-3 mb-3">
+          <div class="pfp"></div>
+          <div class="comment-content">
+              <span class="comment-username">{{user.name}} wrote:</span>
+              <p class="comment-text">Post #2 description goes here.</p>
+          </div>
+      </div>
+
+  </main>
+
+</div>
