@@ -22,6 +22,16 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+
+// support fetch for Node < 18
+const fetch = global.fetch || ((...args) =>
+  import("node-fetch").then(({ default: f }) => f(...args))
+);
+
+// eBird API Key
+const EBIRD_API_KEY = process.env.EBIRD_API_KEY;
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -50,7 +60,7 @@ app.set("views", path.join(__dirname, "views"));
 
 // Middleware
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -175,12 +185,10 @@ app.get("/friends", isAuthenticated, (req, res) => {
 app.get("/profile", isAuthenticated, async (req, res) => {
   const user = req.session.user;
 
-  // Fix missing or empty profile picture
   if (!user.profile_picture) {
     user.profile_picture = "/images/default_pfp.png";
   }
 
-  // Format join date
   let formattedDate = "";
   if (user.created_at) {
     const date = new Date(user.created_at);
@@ -200,7 +208,6 @@ app.get("/profile", isAuthenticated, async (req, res) => {
   });
 });
 
-
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {
     const userId = req.session.user.id;
@@ -208,18 +215,15 @@ app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), a
 
     let profilePicPath = req.session.user.profile_picture;
 
-    // If user uploaded a new picture
     if (req.file) {
       profilePicPath = `/uploads/${req.file.filename}`;
     }
 
-    // Update database
     await pool.query(
       "UPDATE users SET profile_picture = $1, bio = $2 WHERE id = $3",
       [profilePicPath, bio, userId]
     );
 
-    // Update session
     req.session.user.profile_picture = profilePicPath;
     req.session.user.bio = bio;
 
@@ -230,7 +234,6 @@ app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), a
     res.status(500).send("Error updating profile");
   }
 });
-
 
 // API Routes
 app.get("/api/user", isAuthenticated, (req, res) => {
@@ -260,7 +263,6 @@ app.get("/api/users/check/:username", async (req, res) => {
   try {
     const username = req.params.username.toLowerCase();
     
-    // Query the database to check if username exists
     const result = await pool.query(
       "SELECT id, username FROM users WHERE LOWER(username) = $1",
       [username]
@@ -273,7 +275,6 @@ app.get("/api/users/check/:username", async (req, res) => {
       });
     }
 
-    // Username exists, return basic user info (no sensitive data)
     res.json({
       exists: true,
       user: {
@@ -295,7 +296,7 @@ app.get("/api/users/check-email/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     
-    // Query the database to check if email exists
+
     const result = await pool.query(
       "SELECT id, name, email FROM users WHERE LOWER(email) = $1",
       [email]
@@ -308,7 +309,6 @@ app.get("/api/users/check-email/:email", async (req, res) => {
       });
     }
 
-    // Email exists, return basic user info (no sensitive data)
     res.json({
       exists: true,
       user: {
@@ -327,13 +327,10 @@ app.get("/api/users/check-email/:email", async (req, res) => {
 });
 
 // Friend Request API endpoints
-
-// Send a friend request
 app.post("/api/friends/request", isAuthenticated, async (req, res) => {
   try {
     const { recipientEmail } = req.body;
     
-    // Validate input
     if (!recipientEmail) {
       return res.status(400).json({ 
         success: false, 
@@ -345,7 +342,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     const senderName = req.session.user.name;
     const senderEmail = req.session.user.email;
     
-    // First, find the recipient by email
     const recipientResult = await pool.query("SELECT id, name, email FROM users WHERE LOWER(email) = $1", [recipientEmail.toLowerCase()]);
     
     if (recipientResult.rows.length === 0) {
@@ -357,7 +353,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     
     const recipient = recipientResult.rows[0];
     
-    // Don't allow sending request to yourself
     if (recipient.id === senderId) {
       return res.status(400).json({
         success: false,
@@ -391,7 +386,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
 
 // Get incoming friend requests for current user
 app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
-  // For localStorage approach, return empty - frontend will handle this
   res.json([]);
 });
 
@@ -400,25 +394,46 @@ app.get("/config", (req, res) => {
   res.json({
     mapboxKey: process.env.MAPBOX_API_KEY
   });
-});
-
-// Get incoming friend requests for current user
-app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
-  // For now, return empty array since we don't have a requests table
-  res.json([]);
 });
 
 // Get outgoing friend requests for current user  
 app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
-  // For now, return empty array since we don't have a requests table
   res.json([]);
 });
 
-// Mapbox API Key route
-app.get("/config", (req, res) => {
-  res.json({
-    mapboxKey: process.env.MAPBOX_API_KEY
-  });
+
+// Bird Suggestion Route (eBird API)
+app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
+  const { lat, lng } = req.query;
+
+  if (!lat || !lng) {
+    return res.status(400).json({ error: "Missing coordinates" });
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}`,
+      {
+        headers: {
+          "X-eBirdApiToken": EBIRD_API_KEY
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    const cleaned = data.map(b => ({
+      speciesCode: b.speciesCode,
+      name: b.comName,
+      sciName: b.sciName
+    }));
+
+    res.json(cleaned);
+
+  } catch (err) {
+    console.error("Bird API error:", err);
+    res.status(500).json({ error: "Failed to fetch bird suggestions" });
+  }
 });
 
 app.use((err, req, res, next) => {

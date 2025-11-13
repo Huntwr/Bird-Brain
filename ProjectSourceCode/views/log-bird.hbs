@@ -10,6 +10,11 @@
           <label for="bird" class="form-label">Bird <span class="text-danger">*</span></label>
           <input type="text" class="form-control" id="bird" name="bird" placeholder="e.g., American Robin" required />
           <div class="invalid-feedback">Please enter the bird name.</div>
+
+          {{!-- added: identify button --}}
+          <button type="button" id="identifyBtn" class="btn btn-outline-info btn-sm mt-2">
+            I don't know the bird — help identify
+          </button>
         </div>
 
         <div class="mb-3">
@@ -21,10 +26,7 @@
         <div class="mb-3">
           <label for="time" class="form-label">Time</label>
           <input type="datetime-local" class="form-control" id="time" name="time" />
-
         </div>
-
-
 
         <div class="mb-3">
           <label for="description" class="form-label">Description</label>
@@ -32,13 +34,13 @@
             placeholder="Notes about behavior, weather, call, etc."></textarea>
         </div>
       </div>
+
       <div class="col-lg-6">
         <label class="form-label d-flex justify-content-between align-items-center">
           <span>Upload Picture <span class="text-danger">(required)</span></span>
         </label>
 
         <div id="uploadZone" class="upload-drop">
-
           <input id="photo" class="upload-input" type="file" name="photo" accept="image/*" required />
           <div id="emptyState" class="upload-empty">
             <div class="display-6"><i class="bi bi-plus-lg"></i></div>
@@ -51,6 +53,7 @@
         </div>
       </div>
     </div>
+
     <hr class="my-4" />
     <div class="d-flex gap-2">
       <button class="btn btn-primary" type="submit">Submit</button>
@@ -58,3 +61,88 @@
     </div>
   </form>
 </div>
+
+
+{{!-- added: bird identification modal --}}
+<div class="modal fade" id="identifyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content p-3">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Identify Your Bird</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <button class="btn btn-primary mb-3" id="useLocationBtn">
+          Use My Location
+        </button>
+
+        <div id="loading" class="text-center py-3" style="display:none;">
+          <div class="spinner-border"></div>
+          <p class="mt-2">Fetching nearby birds...</p>
+        </div>
+
+        <div id="birdResults" class="list-group"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+{{!-- added: frontend script --}}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const identifyBtn = document.getElementById("identifyBtn");
+  const useLocationBtn = document.getElementById("useLocationBtn");
+  const birdInput = document.getElementById("bird");
+  const loading = document.getElementById("loading");
+  const birdResults = document.getElementById("birdResults");
+
+  const modal = new bootstrap.Modal(document.getElementById("identifyModal"));
+
+  identifyBtn.addEventListener("click", () => {
+    modal.show();
+  });
+
+  useLocationBtn.addEventListener("click", () => {
+    loading.style.display = "block";
+    birdResults.innerHTML = "";
+
+    navigator.geolocation.getCurrentPosition(async position => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      const res = await fetch(`/api/bird-suggestions?lat=${lat}&lng=${lng}`);
+      const birds = await res.json();
+
+      loading.style.display = "none";
+      renderBirdList(birds);
+
+    }, () => {
+      loading.style.display = "none";
+      alert("Location access denied.");
+    });
+  });
+
+  function renderBirdList(birds) {
+    birdResults.innerHTML = "";
+
+    birds.forEach(b => {
+      const item = document.createElement("button");
+      item.className = "list-group-item list-group-item-action";
+      item.textContent = `${b.name} (${b.sciName})`;
+
+      item.addEventListener("click", () => {
+        birdInput.value = b.name;
+        modal.hide();
+      });
+
+      birdResults.appendChild(item);
+    });
+  }
+
+});
+</script>
