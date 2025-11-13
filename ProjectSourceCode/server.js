@@ -6,6 +6,12 @@ const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
+// support fetch for Node < 18
+const fetch = global.fetch || ((...args) => import("node-fetch").then(({ default: f }) => f(...args)));
+
+//  eBird API Key
+const EBIRD_API_KEY = process.env.EBIRD_API_KEY;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -149,11 +155,46 @@ app.get("/api/git", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch Git data" });
   }
 });
+
 // Mapbox API Key route
 app.get("/config", (req, res) => {
   res.json({
     mapboxKey: process.env.MAPBOX_API_KEY
   });
+});
+
+// Bird Suggestion Route (eBird API)
+app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
+  const { lat, lng } = req.query;
+
+  if (!lat || !lng) {
+    return res.status(400).json({ error: "Missing coordinates" });
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}`,
+      {
+        headers: {
+          "X-eBirdApiToken": EBIRD_API_KEY
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    const cleaned = data.map(b => ({
+      speciesCode: b.speciesCode,
+      name: b.comName,
+      sciName: b.sciName
+    }));
+
+    res.json(cleaned);
+
+  } catch (err) {
+    console.error("Bird API error:", err);
+    res.status(500).json({ error: "Failed to fetch bird suggestions" });
+  }
 });
 
 app.use((err, req, res, next) => {
