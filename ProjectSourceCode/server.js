@@ -147,6 +147,20 @@ app.get("/log-bird", isAuthenticated, (req, res) => {
   res.render("log-bird", { title: "Log Bird" });
 });
 
+app.post("/log-bird", isAuthenticated, async (req, res) => {
+  const { species, location, date, notes } = req.body;
+  try {
+    await pool.query(
+    "INSERT INTO bird_logs (user_id, species, location, sighting_date, notes) VALUES ($1, $2, $3, $4, $5)",
+      [req.session.user.id, species, location, date, notes]
+    );
+    res.redirect("/home");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
+  }
+});
+
 app.get("/comments", isAuthenticated, (req, res) => {
   res.render("comment", { title: "Comments" });
 });
