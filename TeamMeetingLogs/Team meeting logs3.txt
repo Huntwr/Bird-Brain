@@ -1,0 +1,14 @@
+Team meeting logs: 
+Meeting 1: 10/13/25
+Min count: 11:10 AM to 11:23 AM
+Week 3 Notes: 
+Final goal: Finish all backend functionality by Wednesday night
+
+- This gives Thursday + Friday before break fully dedicated to easy styling + UI polish
+- Backend tasks assigned and clarified for each member
+- Confirmed database routes needed for:
+- User accounts (signup/login/logout)
+- Comments page (GET/POST)
+- Bird logging (GET/POST)
+- Friends system (if implemented this week)
+- Checked progress on Postgres setup + Docker reliability
