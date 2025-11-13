@@ -1,0 +1,27 @@
+Release notes week 2 for Bird Brain
+
+Added Profile page to nav bar
+
+Added nav bar to the Profile page
+
+Profile page now displays account creation date
+
+Added default profile picture
+
+Added ability to change profile picture and bio
+
+Continued work on displaying user posts on profile
+
+Added functionality to all tabs on the Friends page
+
+Added Add Friends modal
+
+Added Favorites tab
+
+Added Requests tab
+
+Continued work on sending and receiving friend requests
+
+Map API key now correctly loads on main page and backend handlebars
+
+Invite link system planned (coming soon)
