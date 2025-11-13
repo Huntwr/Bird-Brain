@@ -1,0 +1,49 @@
+<link rel="stylesheet" href="/css/friendsStyle.css">
+
+<script>
+    window.currentUser = {
+        id: {{user.id}},
+        name: "{{user.name}}",
+        email: "{{user.email}}"
+    };
+</script>
+
+<script src="/js/friends.js"></script>
+<script src="/js/friends-tabs.js"></script>
+
+<div class="container">
+    <div class="friends-tabs">
+        <button class="tab active" data-tab="friends">Friends (<span id="friends-count">0</span>)</button>
+        <button class="tab" data-tab="favorites">Favorites (<span id="favorites-count">0</span>)</button>
+        <button class="tab" data-tab="requests">Requests (<span id="requests-count">0</span>)</button>
+        <button class="tab" data-tab="invite">Invite</button>
+    </div>
+
+    <div class="content-area">
+        <div class="friends-list">
+        </div>
+
+        <div class="posts-section">
+        </div>
+    </div>
+</div>
+
+<!-- Add Friend Modal -->
+<div id="addFriendModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add New Friend</h2>
+            <span class="close" onclick="closeAddFriendModal()">&times;</span>
+        </div>
+        <form id="addFriendForm" onsubmit="handleAddFriendSubmit(event)">
+            <div class="form-group">
+                <label for="friendEmail">Friend's Email:</label>
+                <input type="email" id="friendEmail" name="friendEmail" placeholder="Enter their email address" required>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="closeAddFriendModal()">Cancel</button>
+                <button type="submit">Add Friend</button>
+            </div>
+        </form>
+    </div>
+</div>

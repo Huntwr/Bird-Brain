@@ -50,6 +50,7 @@ app.set("views", path.join(__dirname, "views"));
 
 // Middleware
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -150,6 +151,13 @@ app.get("/comments", isAuthenticated, (req, res) => {
   res.render("comment", { title: "Comments" });
 });
 
+app.get("/friends", isAuthenticated, (req, res) => {
+  res.render("friends", { 
+    title: "Friends",
+    user: req.session.user
+  });
+});
+
 app.get("/profile", isAuthenticated, async (req, res) => {
   const user = req.session.user;
 
@@ -232,6 +240,166 @@ app.get("/api/git", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch Git data" });
   }
 });
+
+// Check if username exists
+app.get("/api/users/check/:username", async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase();
+    
+    // Query the database to check if username exists
+    const result = await pool.query(
+      "SELECT id, username FROM users WHERE LOWER(username) = $1",
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        exists: false, 
+        message: `Username "${req.params.username}" does not exist.` 
+      });
+    }
+
+    // Username exists, return basic user info (no sensitive data)
+    res.json({
+      exists: true,
+      user: {
+        id: result.rows[0].id,
+        username: result.rows[0].username
+      }
+    });
+  } catch (err) {
+    console.error("Error checking username:", err);
+    res.status(500).json({ 
+      exists: false, 
+      message: "Unable to verify username. Please try again." 
+    });
+  }
+});
+
+// Check if email exists
+app.get("/api/users/check-email/:email", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase();
+    
+    // Query the database to check if email exists
+    const result = await pool.query(
+      "SELECT id, name, email FROM users WHERE LOWER(email) = $1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        exists: false, 
+        message: `Email "${req.params.email}" does not exist.` 
+      });
+    }
+
+    // Email exists, return basic user info (no sensitive data)
+    res.json({
+      exists: true,
+      user: {
+        id: result.rows[0].id,
+        name: result.rows[0].name,
+        email: result.rows[0].email
+      }
+    });
+  } catch (err) {
+    console.error("Error checking email:", err);
+    res.status(500).json({ 
+      exists: false, 
+      message: "Unable to verify email. Please try again." 
+    });
+  }
+});
+
+// Friend Request API endpoints
+
+// Send a friend request
+app.post("/api/friends/request", isAuthenticated, async (req, res) => {
+  try {
+    const { recipientEmail } = req.body;
+    
+    // Validate input
+    if (!recipientEmail) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Recipient email is required" 
+      });
+    }
+    
+    const senderId = req.session.user.id;
+    const senderName = req.session.user.name;
+    const senderEmail = req.session.user.email;
+    
+    // First, find the recipient by email
+    const recipientResult = await pool.query("SELECT id, name, email FROM users WHERE LOWER(email) = $1", [recipientEmail.toLowerCase()]);
+    
+    if (recipientResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+    
+    const recipient = recipientResult.rows[0];
+    
+    // Don't allow sending request to yourself
+    if (recipient.id === senderId) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot send a friend request to yourself"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: `Friend request sent to ${recipient.name}`,
+      request: {
+        id: Date.now(),
+        senderId: senderId,
+        senderName: senderName,
+        senderEmail: senderEmail,
+        recipientId: recipient.id,
+        recipientName: recipient.name,
+        recipientEmail: recipient.email,
+        status: 'pending',
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    console.error("Error sending friend request:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to send friend request" 
+    });
+  }
+});
+
+// Get incoming friend requests for current user
+app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
+  // For localStorage approach, return empty - frontend will handle this
+  res.json([]);
+});
+
+// Mapbox API Key route
+app.get("/config", (req, res) => {
+  res.json({
+    mapboxKey: process.env.MAPBOX_API_KEY
+  });
+});
+
+// Get incoming friend requests for current user
+app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
+  // For now, return empty array since we don't have a requests table
+  res.json([]);
+});
+
+// Get outgoing friend requests for current user  
+app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
+  // For now, return empty array since we don't have a requests table
+  res.json([]);
+});
+
 // Mapbox API Key route
 app.get("/config", (req, res) => {
   res.json({
