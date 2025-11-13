@@ -121,7 +121,7 @@ app.post('/login', async (req, res) => {
       name: user.name, 
       email: user.email,
       created_at: user.created_at,
-      profile_picture: user.profile_picture,
+      profile_picture: user.profile_picture || "/images/default_pfp.png",
       bio: user.bio
     };
     res.redirect('/home')
@@ -153,18 +153,23 @@ app.get("/comments", isAuthenticated, (req, res) => {
 app.get("/profile", isAuthenticated, async (req, res) => {
   const user = req.session.user;
 
-  // Format the created_at date nicely
+  // Fix missing or empty profile picture
+  if (!user.profile_picture) {
+    user.profile_picture = "/images/default_pfp.png";
+  }
+
+  // Format join date
   let formattedDate = "";
   if (user.created_at) {
     const date = new Date(user.created_at);
     formattedDate = date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
-      day: "numeric"
+      day: "numeric",
     });
   }
 
-  res.render("profile", { 
+  res.render("profile", {
     title: "Profile",
     user: {
       ...user,
@@ -172,6 +177,7 @@ app.get("/profile", isAuthenticated, async (req, res) => {
     }
   });
 });
+
 
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {

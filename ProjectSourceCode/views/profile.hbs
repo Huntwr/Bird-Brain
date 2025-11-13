@@ -5,14 +5,14 @@
   <header class="profile-header d-flex align-items-center gap-3 mb-4">
 
       <!-- Profile Picture -->
-      <div class="post-picture" style="width:120px; height:120px;">
-          {{#if user.profile_picture}}
-            <img src="{{user.profile_picture}}" alt="Profile Picture" style="width:100%; height:100%; border-radius:12px;">
-          {{else}}
-            Profile Picture
-          {{/if}}
+      <div class="pfp-wrapper">
+        <img 
+            src="{{user.profile_picture}}"
+            alt="Profile Picture"
+            class="pfp-image"
+            id="profile-img"
+        >
       </div>
-
       <div class="user-info">
           <h1 class="username">{{user.name}}</h1>
           <p class="description">Email: {{user.email}}</p>
