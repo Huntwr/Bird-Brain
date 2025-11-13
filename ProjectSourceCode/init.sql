@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+
 CREATE TABLE IF NOT EXISTS bird_logs (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id),
