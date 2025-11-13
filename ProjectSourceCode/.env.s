@@ -1,0 +1,6 @@
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=birdbrain
+DB_HOST=db
+DB_PORT=5432
+SESSION_SECRET=supersecretkey
