@@ -1,22 +1,29 @@
-<!-- Friends Page Content -->
 <link rel="stylesheet" href="/css/friendsStyle.css">
+
+<script>
+    window.currentUser = {
+        id: {{user.id}},
+        name: "{{user.name}}",
+        email: "{{user.email}}"
+    };
+</script>
+
 <script src="/js/friends.js"></script>
+<script src="/js/friends-tabs.js"></script>
 
 <div class="container">
     <div class="friends-tabs">
-        <button class="tab active">Friends (#)</button>
-        <button class="tab">Favorites (#)</button>
-        <button class="tab">Requests (#)</button>
-        <button class="tab">Invite</button>
+        <button class="tab active" data-tab="friends">Friends (<span id="friends-count">0</span>)</button>
+        <button class="tab" data-tab="favorites">Favorites (<span id="favorites-count">0</span>)</button>
+        <button class="tab" data-tab="requests">Requests (<span id="requests-count">0</span>)</button>
+        <button class="tab" data-tab="invite">Invite</button>
     </div>
 
     <div class="content-area">
         <div class="friends-list">
-            <!-- Friends list will be dynamically loaded here -->
         </div>
 
         <div class="posts-section">
-            <!-- Selected friend's posts will be dynamically loaded here -->
         </div>
     </div>
 </div>
@@ -30,12 +37,8 @@
         </div>
         <form id="addFriendForm" onsubmit="handleAddFriendSubmit(event)">
             <div class="form-group">
-                <label for="friendName">Friend's Name:</label>
-                <input type="text" id="friendName" name="friendName" placeholder="Enter their full name" required>
-            </div>
-            <div class="form-group">
-                <label for="friendUsername">Username:</label>
-                <input type="text" id="friendUsername" name="friendUsername" placeholder="Enter their username" required>
+                <label for="friendEmail">Friend's Email:</label>
+                <input type="email" id="friendEmail" name="friendEmail" placeholder="Enter their email address" required>
             </div>
             <div class="form-actions">
                 <button type="button" onclick="closeAddFriendModal()">Cancel</button>

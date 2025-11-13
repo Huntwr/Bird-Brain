@@ -1,50 +1,136 @@
-// Friends Page JavaScript - Bird Brain App
-// Handles friend management, storage, and interactions
-
 // Friends data management
 let friends = [];
+let friendRequests = [];
 let selectedFriend = null;
+let currentTab = 'friends';
 
-// Load friends from localStorage on page load
+function getUserStorageKey(suffix) {
+    if (!window.currentUser || !window.currentUser.id) {
+        console.error('Current user not available');
+        return `birdBrain${suffix}`;
+    }
+    return `birdBrain${suffix}_user${window.currentUser.id}`;
+}
+
+function getStorageKeyForUser(suffix, userId) {
+    return `birdBrain${suffix}_user${userId}`;
+}
+
+function clearAllFriendData() {
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('birdBrain') || key.includes('Friends') || key.includes('Requests'))) {
+            localStorage.removeItem(key);
+        }
+    }
+}
+
 function loadFriendsFromStorage() {
-    const storedFriends = localStorage.getItem('birdBrainFriends');
+    const storedFriends = localStorage.getItem(getUserStorageKey('Friends'));
     if (storedFriends) {
         friends = JSON.parse(storedFriends);
+    } else {
+        friends = [];
+    }
+
+    const requestsKey = getUserStorageKey('IncomingRequests');
+    console.log('Looking for requests with key:', requestsKey);
+    const storedRequests = localStorage.getItem(requestsKey);
+    console.log('Found stored requests:', storedRequests);
+    if (storedRequests) {
+        friendRequests = JSON.parse(storedRequests);
+    } else {
+        friendRequests = [];
     }
 }
 
 // Save friends to localStorage
 function saveFriendsToStorage() {
-    localStorage.setItem('birdBrainFriends', JSON.stringify(friends));
+    localStorage.setItem(getUserStorageKey('Friends'), JSON.stringify(friends));
+    localStorage.setItem(getUserStorageKey('IncomingRequests'), JSON.stringify(friendRequests));
+}
+
+// Save friend requests to localStorage
+function saveFriendRequests(requests) {
+    friendRequests = requests || friendRequests;
+    localStorage.setItem(getUserStorageKey('IncomingRequests'), JSON.stringify(friendRequests));
+}
+
+// Validate if email exists in the system
+async function validateEmail(email) {
+    try {
+        const response = await fetch(`/api/users/check-email/${encodeURIComponent(email)}`);
+        
+        if (response.status === 404) {
+            return { exists: false, message: `Email "${email}" does not exist in Bird Brain.` };
+        }
+        
+        if (!response.ok) {
+            return { exists: false, message: 'Unable to verify email. Please try again.' };
+        }
+        
+        const userData = await response.json();
+        return { exists: true, userData: userData };
+        
+    } catch (error) {
+        console.error('Error validating email:', error);
+        return { exists: false, message: 'Unable to verify email. Please check your connection.' };
+    }
 }
 
 // Add a new friend
-function addFriend(friendData) {
-    // Check if friend already exists
-    const existingFriend = friends.find(f => f.username === friendData.username);
-    if (existingFriend) {
-        alert('This friend is already in your list!');
+async function addFriend(friendData) {
+    try {
+        const response = await fetch('/api/friends/request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                recipientEmail: friendData.email
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            alert(result.message);
+            return false;
+        }
+
+        const recipientStorageKey = getStorageKeyForUser('IncomingRequests', result.request.recipientId);
+        console.log('Storing request with key:', recipientStorageKey);
+        const existingRecipientRequests = JSON.parse(localStorage.getItem(recipientStorageKey) || '[]');
+        
+        const existingRequest = existingRecipientRequests.find(r => r.senderEmail === result.request.senderEmail);
+        if (!existingRequest) {
+            const incomingRequest = {
+                id: result.request.id,
+                senderId: result.request.senderId,
+                senderName: result.request.senderName,
+                senderEmail: result.request.senderEmail,
+                status: 'pending',
+                timestamp: result.request.timestamp,
+                type: 'incoming'
+            };
+            
+            existingRecipientRequests.push(incomingRequest);
+            localStorage.setItem(recipientStorageKey, JSON.stringify(existingRecipientRequests));
+            console.log('Successfully stored request for recipient:', result.request.recipientId, 'with key:', recipientStorageKey);
+        }
+
+        alert(result.message);
+        
+        closeAddFriendModal();
+        
+        return true;
+    } catch (error) {
+        console.error('Error sending friend request:', error);
+        alert('Error sending friend request. Please try again.');
         return false;
     }
-
-    const newFriend = {
-        id: Date.now(), // Simple ID generation
-        name: friendData.name,
-        username: friendData.username,
-        status: 'Online',
-        likes: 0,
-        posts: [],
-        dateAdded: new Date().toISOString()
-    };
-
-    friends.push(newFriend);
-    saveFriendsToStorage();
-    renderFriendsList();
-    closeAddFriendModal();
-    return true;
 }
 
-// Remove a friend
 function removeFriend(friendId) {
     if (confirm('Are you sure you want to remove this friend?')) {
         friends = friends.filter(f => f.id !== friendId);
@@ -57,7 +143,9 @@ function removeFriend(friendId) {
 
 function loadFriendsPage() {
     loadFriendsFromStorage();
-    renderFriendsList();
+    initializeTabs();
+    renderCurrentTab();
+    updateTabCounts();
     renderSelectedFriend();
 }
 
@@ -69,11 +157,6 @@ function renderFriendsList() {
             <div class="friends-header">
                 <h3>Friends (0)</h3>
                 <button class="add-friend-btn" onclick="openAddFriendModal()">+ Add Friend</button>
-            </div>
-            <div class="empty-state">
-                <h4>No Friends Yet</h4>
-                <p>You haven't added any friends yet. Start connecting with other bird enthusiasts!</p>
-                <button class="find-friends-btn" onclick="openAddFriendModal()">Add Your First Friend</button>
             </div>
         `;
     } else {
@@ -90,7 +173,7 @@ function renderFriendsList() {
                 <div class="friend-item" onclick="selectFriend(${index})" data-friend-id="${friend.id}">
                     <div class="friend-info">
                         <div class="friend-name">${friend.name}</div>
-                        <div class="friend-username">@${friend.username}</div>
+                        <div class="friend-email">${friend.email}</div>
                         <div class="friend-status">${friend.status}</div>
                     </div>
                     <div class="friend-actions">
@@ -107,6 +190,11 @@ function renderFriendsList() {
 
 function renderSelectedFriend() {
     const postsSection = document.querySelector('.posts-section');
+
+    if (currentTab === 'invite') {
+        postsSection.innerHTML = '';
+        return;
+    }
     
     if (selectedFriend === null) {
         postsSection.innerHTML = `
@@ -126,7 +214,7 @@ function renderSelectedFriend() {
         if (friend.posts.length === 0) {
             postsSection.innerHTML = `
                 <div class="posts-header">
-                    <h3>${friend.name} (@${friend.username})</h3>
+                    <h3>${friend.name}</h3>
                     <div>
                         <span>Posts (0)</span>
                         <span>Likes (${friend.likes || 0})</span>
@@ -142,7 +230,7 @@ function renderSelectedFriend() {
         } else {
             let postsHTML = `
                 <div class="posts-header">
-                    <h3>${friend.name} (@${friend.username})</h3>
+                    <h3>${friend.name}</h3>
                     <div>
                         <span>Posts (${friend.posts.length})</span>
                         <span>Likes (${friend.likes || 0})</span>
@@ -169,7 +257,6 @@ function renderSelectedFriend() {
 
 function selectFriend(index) {
     selectedFriend = index;
-    // Update visual selection
     document.querySelectorAll('.friend-item').forEach((item, i) => {
         if (i === index) {
             item.classList.add('selected');
@@ -219,27 +306,38 @@ function closeAddFriendModal() {
     document.getElementById('addFriendForm').reset();
 }
 
-function handleAddFriendSubmit(event) {
+async function handleAddFriendSubmit(event) {
     event.preventDefault();
     
     const formData = new FormData(event.target);
-    const friendData = {
-        name: formData.get('friendName').trim(),
-        username: formData.get('friendUsername').trim()
-    };
+    const email = formData.get('friendEmail').trim();
 
-    // Validate input
-    if (!friendData.name || !friendData.username) {
-        alert('Please fill in all fields');
+    if (!email) {
+        alert('Please enter an email address');
         return;
     }
 
-    if (friendData.username.includes(' ')) {
-        alert('Username cannot contain spaces');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address');
         return;
     }
 
-    addFriend(friendData);
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.textContent = 'Checking...';
+    submitButton.disabled = true;
+
+    try {
+        const friendData = {
+            email: email
+        };
+
+        await addFriend(friendData);
+    } finally {
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+    }
 }
 
 function formatDate(dateString) {
@@ -259,12 +357,10 @@ function viewPost(friendIndex, postIndex) {
     alert(`${friend.name}'s Post:\n\n"${post.content}"\n\nPosted: ${formatDate(post.date)}`);
 }
 
-// Initialize page when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     loadFriendsPage();
 });
 
-// Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('addFriendModal');
     if (event.target === modal) {

@@ -12,14 +12,21 @@
     try {
       const res = await fetch('/config');
       const data = await res.json();
+      
+      console.log('Mapbox API Key received:', data.mapboxKey ? 'Yes' : 'No');
+      console.log('API Key length:', data.mapboxKey?.length);
 
       mapboxgl.accessToken = data.mapboxKey;
+      
+      console.log('Creating map...');
       const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/outdoors-v12',
         center: [-105.2705, 40.0150], // Boulder, CO
         zoom: 10
       });
+      
+      console.log('Map created successfully');
 
       map.addControl(new mapboxgl.NavigationControl());
 
@@ -27,6 +34,14 @@
         .setLngLat([-105.2705, 40.0150])
         .setPopup(new mapboxgl.Popup().setText('CU Boulder - Bird Brain HQ'))
         .addTo(map);
+        
+      map.on('load', () => {
+        console.log('Map loaded successfully');
+      });
+      
+      map.on('error', (e) => {
+        console.error('Map error:', e);
+      });
     } catch (err) {
       console.error('Error loading map:', err);
     }
