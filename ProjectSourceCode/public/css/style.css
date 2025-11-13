@@ -396,3 +396,19 @@ button:hover {
   box-shadow: 0 8px 20px rgba(78, 52, 46, 0.25);
   z-index: 0;
 }
+
+/* Profile Picture Wrapper (auto-resizes to image) */
+.pfp-wrapper {
+  display: inline-block;
+  max-width: 250px;       /* caps huge images */
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* Image itself */
+.pfp-image {
+  display: block;
+  width: 100%;            /* scales down nicely */
+  height: auto;           /* preserves aspect ratio */
+}

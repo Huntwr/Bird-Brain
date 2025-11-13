@@ -6,6 +6,22 @@ const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
+const multer = require("multer");
+
+// Multer storage for profile pictures
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, "public/uploads"));
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const filename = `profile_${req.session.user.id}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({ storage: storage });
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -100,7 +116,14 @@ app.post('/login', async (req, res) => {
       return res.send("<script>alert('Incorrect password. Try again.'); window.location.href = '/login';</script>")
     }
 
-    req.session.user = { id: user.id, name: user.name, email: user.email }
+    req.session.user = { 
+      id: user.id, 
+      name: user.name, 
+      email: user.email,
+      created_at: user.created_at,
+      profile_picture: user.profile_picture || "/images/default_pfp.png",
+      bio: user.bio
+    };
     res.redirect('/home')
   } catch (err) {
     console.error('Login error:', err)
@@ -126,6 +149,66 @@ app.get("/log-bird", isAuthenticated, (req, res) => {
 app.get("/comments", isAuthenticated, (req, res) => {
   res.render("comment", { title: "Comments" });
 });
+
+app.get("/profile", isAuthenticated, async (req, res) => {
+  const user = req.session.user;
+
+  // Fix missing or empty profile picture
+  if (!user.profile_picture) {
+    user.profile_picture = "/images/default_pfp.png";
+  }
+
+  // Format join date
+  let formattedDate = "";
+  if (user.created_at) {
+    const date = new Date(user.created_at);
+    formattedDate = date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  res.render("profile", {
+    title: "Profile",
+    user: {
+      ...user,
+      formatted_date: formattedDate
+    }
+  });
+});
+
+
+app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const bio = req.body.bio;
+
+    let profilePicPath = req.session.user.profile_picture;
+
+    // If user uploaded a new picture
+    if (req.file) {
+      profilePicPath = `/uploads/${req.file.filename}`;
+    }
+
+    // Update database
+    await pool.query(
+      "UPDATE users SET profile_picture = $1, bio = $2 WHERE id = $3",
+      [profilePicPath, bio, userId]
+    );
+
+    // Update session
+    req.session.user.profile_picture = profilePicPath;
+    req.session.user.bio = bio;
+
+    res.redirect("/profile");
+
+  } catch (err) {
+    console.error("Profile update error:", err);
+    res.status(500).send("Error updating profile");
+  }
+});
+
 
 // API Routes
 app.get("/api/user", isAuthenticated, (req, res) => {
