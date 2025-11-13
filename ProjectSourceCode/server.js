@@ -401,7 +401,26 @@ app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
   res.json([]);
 });
 
+// added: Full eBird taxonomy list (used for survey-based identify)
+app.get("/api/bird-list", isAuthenticated, async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      {
+        headers: {
+          "X-eBirdApiToken": EBIRD_API_KEY
+        }
+      }
+    );
 
+    const data = await response.json();
+    res.json(data);
+
+  } catch (err) {
+    console.error("Error fetching bird list:", err);
+    res.status(500).json({ error: "Failed to fetch bird list" });
+  }
+});
 // Bird Suggestion Route (eBird API)
 app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
   const { lat, lng } = req.query;

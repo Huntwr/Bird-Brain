@@ -2,10 +2,11 @@
 
   <h1 class="h3 mb-4">Log a Bird Sighting</h1>
 
-  <form class="needs-validation" novalidate action="/log-bird" method="POST" novalidate>
+  <form class="needs-validation" novalidate action="/log-bird" method="POST">
 
     <div class="row g-4">
       <div class="col-lg-6">
+
         <div class="mb-3">
           <label for="bird" class="form-label">Bird <span class="text-danger">*</span></label>
           <input type="text" class="form-control" id="bird" name="bird" placeholder="e.g., American Robin" required />
@@ -33,9 +34,11 @@
           <textarea class="form-control" id="description" name="description" rows="7"
             placeholder="Notes about behavior, weather, call, etc."></textarea>
         </div>
+
       </div>
 
       <div class="col-lg-6">
+
         <label class="form-label d-flex justify-content-between align-items-center">
           <span>Upload Picture <span class="text-danger">(required)</span></span>
         </label>
@@ -48,9 +51,11 @@
             <small class="text-secondary d-block mt-1">PNG/JPG up to ~10MB</small>
           </div>
         </div>
+
         <div class="invalid-feedback d-block" id="photoInvalid" style="display:none;">
           Please upload a picture.
         </div>
+
       </div>
     </div>
 
@@ -59,11 +64,11 @@
       <button class="btn btn-primary" type="submit">Submit</button>
       <button class="btn btn-outline-secondary" type="reset">Reset</button>
     </div>
+
   </form>
 </div>
 
-
-{{!-- added: bird identification modal --}}
+{{!-- added: new SURVEY-based Identify modal --}}
 <div class="modal fade" id="identifyModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content p-3">
@@ -74,75 +79,58 @@
       </div>
 
       <div class="modal-body">
-        <button class="btn btn-primary mb-3" id="useLocationBtn">
-          Use My Location
+
+        <h6>Step 1: Describe your bird</h6>
+
+        <div class="mb-3">
+          <label class="form-label">Main Color</label>
+          <select id="colorSelect" class="form-select">
+            <option value="">Any</option>
+            <option value="brown">Brown</option>
+            <option value="gray">Gray</option>
+            <option value="red">Red</option>
+            <option value="yellow">Yellow</option>
+            <option value="black">Black</option>
+            <option value="white">White</option>
+            <option value="blue">Blue</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Size</label>
+          <select id="sizeSelect" class="form-select">
+            <option value="">Any</option>
+            <option value="small">Small (sparrow)</option>
+            <option value="medium">Medium (robin)</option>
+            <option value="large">Large (crow)</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Beak Type</label>
+          <select id="beakSelect" class="form-select">
+            <option value="">Any</option>
+            <option value="thin">Thin</option>
+            <option value="thick">Thick</option>
+            <option value="hooked">Hooked</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary w-100" id="surveySubmitBtn">
+          Show Possible Birds
         </button>
 
+        <hr>
         <div id="loading" class="text-center py-3" style="display:none;">
           <div class="spinner-border"></div>
-          <p class="mt-2">Fetching nearby birds...</p>
+          <p class="mt-2">Finding matching birds...</p>
         </div>
 
         <div id="birdResults" class="list-group"></div>
-      </div>
 
+      </div>
     </div>
   </div>
 </div>
 
-
-{{!-- added: frontend script --}}
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-
-  const identifyBtn = document.getElementById("identifyBtn");
-  const useLocationBtn = document.getElementById("useLocationBtn");
-  const birdInput = document.getElementById("bird");
-  const loading = document.getElementById("loading");
-  const birdResults = document.getElementById("birdResults");
-
-  const modal = new bootstrap.Modal(document.getElementById("identifyModal"));
-
-  identifyBtn.addEventListener("click", () => {
-    modal.show();
-  });
-
-  useLocationBtn.addEventListener("click", () => {
-    loading.style.display = "block";
-    birdResults.innerHTML = "";
-
-    navigator.geolocation.getCurrentPosition(async position => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-
-      const res = await fetch(`/api/bird-suggestions?lat=${lat}&lng=${lng}`);
-      const birds = await res.json();
-
-      loading.style.display = "none";
-      renderBirdList(birds);
-
-    }, () => {
-      loading.style.display = "none";
-      alert("Location access denied.");
-    });
-  });
-
-  function renderBirdList(birds) {
-    birdResults.innerHTML = "";
-
-    birds.forEach(b => {
-      const item = document.createElement("button");
-      item.className = "list-group-item list-group-item-action";
-      item.textContent = `${b.name} (${b.sciName})`;
-
-      item.addEventListener("click", () => {
-        birdInput.value = b.name;
-        modal.hide();
-      });
-
-      birdResults.appendChild(item);
-    });
-  }
-
-});
-</script>
+<script src="/js/logBird.js"></script>
