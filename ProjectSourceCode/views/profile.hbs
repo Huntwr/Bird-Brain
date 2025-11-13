@@ -1,0 +1,74 @@
+<link rel="stylesheet" href="/css/style.css">
+
+<div class="comment-container p-4 mt-4">
+
+  <header class="profile-header d-flex align-items-center gap-3 mb-4">
+
+      <!-- Profile Picture -->
+      <div class="pfp-wrapper">
+        <img 
+            src="{{user.profile_picture}}"
+            alt="Profile Picture"
+            class="pfp-image"
+            id="profile-img"
+        >
+      </div>
+      <div class="user-info">
+          <h1 class="username">{{user.name}}</h1>
+          <p class="description">Email: {{user.email}}</p>
+          <p class="description">Member since: {{user.formatted_date}}</p>
+          {{#if user.bio}}
+            <p class="description">Bio: {{user.bio}}</p>
+          {{else}}
+            <p class="description">Bio: Not set yet.</p>
+          {{/if}}
+      </div>
+
+  </header>
+
+  <button id="editBtn" class="btn btn-primary mb-3">Edit Profile</button>
+
+  <!-- Hidden Edit Form -->
+  <form id="editForm" action="/profile/update" method="POST" enctype="multipart/form-data" style="display:none;" class="mb-4">
+      <div class="mb-3">
+          <label>Profile Picture:</label>
+          <input type="file" name="profile_picture" class="form-control">
+      </div>
+
+      <div class="mb-3">
+          <label>Bio:</label>
+          <textarea name="bio" class="form-control" rows="3">{{user.bio}}</textarea>
+      </div>
+
+      <button type="submit" class="btn btn-success">Save Changes</button>
+  </form>
+
+  <script>
+    document.getElementById("editBtn").addEventListener("click", () => {
+      const form = document.getElementById("editForm");
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    });
+  </script>
+
+  <main class="posts">
+      <h2 class="section-title mb-3">User Posts</h2>
+
+      <!-- Placeholders remain untouched -->
+      <div class="comment p-3 rounded-3 mb-3">
+          <div class="pfp"></div>
+          <div class="comment-content">
+              <span class="comment-username">{{user.name}} wrote:</span>
+              <p class="comment-text">This is a placeholder post.</p>
+          </div>
+      </div>
+
+      <div class="comment p-3 rounded-3 mb-3">
+          <div class="pfp"></div>
+          <div class="comment-content">
+              <span class="comment-username">{{user.name}} wrote:</span>
+              <p class="comment-text">Another placeholder post.</p>
+          </div>
+      </div>
+  </main>
+
+</div>
