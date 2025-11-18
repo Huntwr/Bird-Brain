@@ -6,21 +6,23 @@ const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
+
 const multer = require("multer");
 
-// Multer storage for profile pictures
+// Multer storage for BOTH profile pics and bird photos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, "public/uploads"));
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const filename = `profile_${req.session.user.id}${ext}`;
-    cb(null, filename);
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ext;
+    cb(null, uniqueName);
   }
 });
 
 const upload = multer({ storage: storage });
+
 
 
 // support fetch for Node < 18
@@ -84,6 +86,77 @@ function isAuthenticated(req, res, next) {
 // Redirect root to login
 app.get("/", (req, res) => {
   res.redirect("/login");
+});
+// ======================
+// eBird Species List API
+// ======================
+app.get("/api/birds/species", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      {
+        headers: { "X-eBirdApiToken": EBIRD_API_KEY }
+      }
+    );
+
+    const data = await response.json();
+    res.json(data);
+
+  } catch (err) {
+    console.error("Species list error:", err);
+    res.status(500).json({ error: "Failed to fetch species list" });
+  }
+});
+
+
+// ======================
+// Geocode (text → lat/lng)
+// ======================
+app.get("/api/geocode", async (req, res) => {
+  const text = req.query.text;
+  if (!text) return res.json({});
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data || data.length === 0) {
+      return res.json({});
+    }
+
+    res.json({
+      lat: data[0].lat,
+      lng: data[0].lon
+    });
+
+  } catch (err) {
+    console.error("Geocode failed:", err);
+    res.json({});
+  }
+});
+// ======================
+// Log Bird POST route
+// ======================
+app.post("/log-bird", upload.single("photo"), async (req, res) => {
+  try {
+    const { bird, location, time, description, latitude, longitude } = req.body;
+    const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
+
+    const userId = req.session.user.id;
+
+    await pool.query(
+      `INSERT INTO bird_sightings (user_id, bird, location, time, description, latitude, longitude, photo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [userId, bird, location, time, description, latitude, longitude, photoPath]
+    );
+
+    res.redirect("/profile"); // or wherever you want to send them
+
+  } catch (err) {
+    console.error("Error logging bird:", err);
+    res.status(500).send("Error logging bird.");
+  }
 });
 
 // Login & Signup pages
@@ -155,20 +228,6 @@ app.get("/home", isAuthenticated, (req, res) => {
 
 app.get("/log-bird", isAuthenticated, (req, res) => {
   res.render("log-bird", { title: "Log Bird" });
-});
-
-app.post("/log-bird", isAuthenticated, async (req, res) => {
-  const { species, location, date, notes } = req.body;
-  try {
-    await pool.query(
-    "INSERT INTO bird_logs (user_id, species, location, sighting_date, notes) VALUES ($1, $2, $3, $4, $5)",
-      [req.session.user.id, species, location, date, notes]
-    );
-    res.redirect("/home");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(err.message);
-  }
 });
 
 app.get("/comments", isAuthenticated, (req, res) => {
@@ -401,26 +460,7 @@ app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
   res.json([]);
 });
 
-// added: Full eBird taxonomy list (used for survey-based identify)
-app.get("/api/bird-list", isAuthenticated, async (req, res) => {
-  try {
-    const response = await fetch(
-      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
-      {
-        headers: {
-          "X-eBirdApiToken": EBIRD_API_KEY
-        }
-      }
-    );
 
-    const data = await response.json();
-    res.json(data);
-
-  } catch (err) {
-    console.error("Error fetching bird list:", err);
-    res.status(500).json({ error: "Failed to fetch bird list" });
-  }
-});
 // Bird Suggestion Route (eBird API)
 app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
   const { lat, lng } = req.query;
@@ -459,6 +499,7 @@ app.use((err, req, res, next) => {
   console.error('Unexpected error:', err)
   res.status(500).send('Something went wrong. Please try again later.')
 })
+
 
 // Start server
 app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
