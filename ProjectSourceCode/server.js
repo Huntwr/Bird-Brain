@@ -4,6 +4,8 @@ const path = require("path");
 const session = require("express-session");
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 require("dotenv").config();
 
 
@@ -156,6 +158,35 @@ app.post("/log-bird", upload.single("photo"), async (req, res) => {
   } catch (err) {
     console.error("Error logging bird:", err);
     res.status(500).send("Error logging bird.");
+  }
+});
+app.post("/api/ai-identify-bird", isAuthenticated, async (req, res) => {
+  try {
+    const { color, size, beak, location } = req.body;
+
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+You are an expert ornithologist. Based ONLY on the following inputs:
+
+Color: ${color || "unknown"}
+Size: ${size || "unknown"}
+Beak Type: ${beak || "unknown"}
+Location (optional): ${location || "unknown"}
+
+Return A 10-15 of likely bird species found in North America that matches these traits, and that it is a bird found from eBird by the Cornell Lab of Ornithology API.
+Return ONLY the bird species common name—no explanation, each bird seperated by a ',', no extra text.
+Example output: "American Robin, Eagle, Cardinal"
+    `;
+
+    const result = await model.generateContent(prompt);
+    const name = result.response.text().trim();
+
+    res.json({ bird: name });
+
+  } catch (err) {
+    console.error("Gemini bird identify error:", err);
+    res.status(500).json({ error: "AI identification failed" });
   }
 });
 
@@ -461,44 +492,28 @@ app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
 });
 
 
-// Bird Suggestion Route (eBird API)
+// Always return the full species list (survey filters still work)
 app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
-  const { lat, lng } = req.query;
-
-  if (!lat || !lng) {
-    return res.status(400).json({ error: "Missing coordinates" });
-  }
-
   try {
     const response = await fetch(
-      `https://api.ebird.org/v2/data/obs/geo/recent?lat=${lat}&lng=${lng}`,
-      {
-        headers: {
-          "X-eBirdApiToken": EBIRD_API_KEY
-        }
-      }
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      { headers: { "X-eBirdApiToken": EBIRD_API_KEY } }
     );
 
-    const data = await response.json();
+    const species = await response.json();
 
-    const cleaned = data.map(b => ({
-      speciesCode: b.speciesCode,
-      name: b.comName,
-      sciName: b.sciName
+    const cleaned = species.map(s => ({
+      comName: s.comName,
+      sciName: s.sciName || "",
     }));
 
     res.json(cleaned);
 
   } catch (err) {
     console.error("Bird API error:", err);
-    res.status(500).json({ error: "Failed to fetch bird suggestions" });
+    res.status(500).json({ error: "Failed to fetch species" });
   }
 });
-
-app.use((err, req, res, next) => {
-  console.error('Unexpected error:', err)
-  res.status(500).send('Something went wrong. Please try again later.')
-})
 
 
 // Start server

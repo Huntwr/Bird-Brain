@@ -13,78 +13,54 @@
     <div class="row g-4">
       <div class="col-lg-6">
 
-        <!-- =============================== -->
-        <!-- Species dropdown (API-loaded)   -->
-        <!-- =============================== -->
-        <div class="mb-3">
-          <label for="speciesSelect" class="form-label">Choose Species (API Loaded)</label>
-          <select id="speciesSelect" class="form-select">
-            <option value="">Loading species...</option>
-          </select>
-          <small class="text-secondary">Optional: choose from real species list.</small>
-        </div>
+<!-- Species list (CTRL+F enabled) -->
+<div class="mb-3">
+  <label class="form-label">Choose Species (CTRL+F to search)</label>
 
-        <div class="text-center my-2 fw-bold">— OR —</div>
+  <div id="speciesListBox"
+       style="border: 1px solid #ccc; border-radius: 6px; height: 300px; overflow-y: scroll;">
+    <div id="speciesList">Loading species...</div>
+  </div>
 
-        <!-- =============================== -->
-        <!-- Manual bird entry / Identify    -->
-        <!-- =============================== -->
+  <small class="text-secondary">
+    Tip: Press <strong>CTRL + F</strong> to search the list.
+  </small>
+</div>
+
+<button type="button" id="identifyBtn" class="btn btn-outline-info btn-sm mt-2">
+  I don't know the bird — help identify
+</button>
+
+<input type="hidden" id="bird" name="bird" required />
+
+        <!-- Location -->
         <div class="mb-3">
-          <label for="bird" class="form-label">Bird <span class="text-danger">*</span></label>
+          <label class="form-label">Location</label>
           <input 
             type="text" 
-            class="form-control" 
-            id="bird" 
-            name="bird" 
-            placeholder="e.g., American Robin" 
-            required
-          />
-          <div class="invalid-feedback">Please enter the bird name.</div>
-
-          <button 
-            type="button" 
-            id="identifyBtn" 
-            class="btn btn-outline-info btn-sm mt-2"
-          >
-            I don't know the bird — help identify
-          </button>
-        </div>
-
-        <!-- =============================== -->
-        <!-- Location input                  -->
-        <!-- =============================== -->
-        <div class="mb-3">
-          <label for="location" class="form-label">Location</label>
-          <input 
-            type="text" 
-            class="form-control" 
             id="location" 
             name="location"
+            class="form-control"
             placeholder="e.g., Chautauqua Park, Boulder, CO"
           />
         </div>
 
-        <!-- Hidden lat/lng -->
         <input type="hidden" id="latitude" name="latitude" />
         <input type="hidden" id="longitude" name="longitude" />
 
-        <!-- =============================== -->
-        <!-- Time                            -->
-        <!-- =============================== -->
+        <!-- Time -->
         <div class="mb-3">
-          <label for="time" class="form-label">Time</label>
-          <input type="datetime-local" class="form-control" id="time" name="time" />
+          <label class="form-label">Time</label>
+          <input type="datetime-local" id="time" name="time" class="form-control" />
         </div>
 
-        <!-- =============================== -->
-        <!-- Description                     -->
-        <!-- =============================== -->
+        <!-- Description -->
         <div class="mb-3">
-          <label for="description" class="form-label">Description</label>
+          <label class="form-label">Description</label>
           <textarea 
-            class="form-control" 
-            id="description" 
-            name="description" 
+            id="description"
+            name="description"
+            class="form-control"
             rows="7"
             placeholder="Notes about behavior, weather, call, etc."
           ></textarea>
@@ -92,89 +68,68 @@
 
       </div>
 
-      <!-- =============================== -->
-      <!-- Photo upload (required)         -->
-      <!-- =============================== -->
+      <!-- Photo upload -->
       <div class="col-lg-6">
-
-        <label class="form-label d-flex justify-content-between align-items-center">
-          <span>
-            Upload Picture <span class="text-danger">(required)</span>
-          </span>
-        </label>
+        <label class="form-label">Upload Picture <span class="text-danger">(required)</span></label>
 
         <div id="uploadZone" class="upload-drop">
           <input 
             id="photo" 
-            class="upload-input" 
             type="file" 
-            name="photo" 
-            accept="image/*" 
+            name="photo"
+            class="upload-input"
+            accept="image/*"
             required
           />
-          <div id="emptyState" class="upload-empty">
+
+          <div id="emptyState" class="upload-empty text-center">
             <div class="display-6"><i class="bi bi-plus-lg"></i></div>
-            <div class="mt-2">Click or drag a photo here</div>
-            <small class="text-secondary d-block mt-1">PNG/JPG up to ~10MB</small>
+            <p class="mt-2">Click or drag a photo here</p>
           </div>
         </div>
 
-        <div 
-          class="invalid-feedback d-block" 
-          id="photoInvalid" 
-          style="display:none;"
-        >
+        <div id="photoInvalid" class="invalid-feedback d-block" style="display:none;">
           Please upload a picture.
         </div>
-
       </div>
+
     </div>
 
     <hr class="my-4" />
-    <div class="d-flex gap-2">
-      <button class="btn btn-primary" type="submit">Submit</button>
-      <button class="btn btn-outline-secondary" type="reset">Reset</button>
-    </div>
+    <button class="btn btn-primary">Submit</button>
+    <button class="btn btn-outline-secondary" type="reset">Reset</button>
 
   </form>
 </div>
 
 
-<!-- ============================================================ -->
-<!-- IDENTIFY BIRD MODAL (Survey-based bird finder)               -->
-<!-- ============================================================ -->
-<div 
-  class="modal fade" 
-  id="identifyModal" 
-  tabindex="-1" 
-  aria-labelledby="identifyModalLabel" 
-  aria-hidden="true"
->
+<!-- IDENTIFY MODAL -->
+<div class="modal fade" id="identifyModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-scrollable modal-lg">
+
     <div class="modal-content">
 
       <div class="modal-header">
-        <h5 class="modal-title" id="identifyModalLabel">Help identify your bird</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title">Help identify your bird</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
       <div class="modal-body">
 
-        <!-- ===================================== -->
-        <!-- Survey fields -->
-        <!-- ===================================== -->
+        <!-- FILTERS -->
         <div class="row mb-3">
+
           <div class="col-md-4">
             <label class="form-label">Color</label>
             <select id="colorSelect" class="form-select">
               <option value="">Any</option>
-              <option>Red</option>
-              <option>Yellow</option>
-              <option>Blue</option>
-              <option>Black</option>
-              <option>Brown</option>
-              <option>White</option>
-              <option>Gray</option>
+              <option value="red">Red</option>
+              <option value="yellow">Yellow</option>
+              <option value="blue">Blue</option>
+              <option value="black">Black</option>
+              <option value="brown">Brown</option>
+              <option value="white">White</option>
+              <option value="gray">Gray</option>
             </select>
           </div>
 
@@ -182,9 +137,9 @@
             <label class="form-label">Size</label>
             <select id="sizeSelect" class="form-select">
               <option value="">Any</option>
-              <option>Small</option>
-              <option>Medium</option>
-              <option>Large</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
             </select>
           </div>
 
@@ -192,34 +147,31 @@
             <label class="form-label">Beak Type</label>
             <select id="beakSelect" class="form-select">
               <option value="">Any</option>
-              <option>Short</option>
-              <option>Long</option>
-              <option>Hooked</option>
-              <option>Thin</option>
-              <option>Conical</option>
+              <option value="short">Short</option>
+              <option value="long">Long</option>
+              <option value="hooked">Hooked</option>
+              <option value="thin">Thin</option>
+              <option value="conical">Conical</option>
             </select>
           </div>
+
         </div>
 
-        <button 
-          id="surveySubmitBtn" 
-          type="button" 
-          class="btn btn-primary w-100 mb-3"
-        >
+        <button id="surveySubmitBtn" class="btn btn-primary w-100 mb-3">
           Find Matching Birds
         </button>
 
         <div id="loading" class="text-center" style="display:none;">
           <div class="spinner-border text-primary"></div>
-          <p class="mt-2">Searching...</p>
+          <p>Searching...</p>
         </div>
 
         <div id="birdResults" class="list-group"></div>
 
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- Load the JS file -->
 <script src="/js/logBird.js"></script>

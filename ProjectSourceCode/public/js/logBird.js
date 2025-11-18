@@ -2,13 +2,13 @@
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  // ============================================================
-  // Elements
-  // ============================================================
   const identifyBtn = document.getElementById("identifyBtn");
   const surveyBtn = document.getElementById("surveySubmitBtn");
+
+  // Your NEW list elements
+  const speciesListBox = document.getElementById("speciesListBox");
+  const speciesList = document.getElementById("speciesList");
   const birdInput = document.getElementById("bird");
-  const speciesSelect = document.getElementById("speciesSelect");
 
   const loading = document.getElementById("loading");
   const birdResults = document.getElementById("birdResults");
@@ -27,111 +27,100 @@ document.addEventListener("DOMContentLoaded", () => {
   const photoInput = document.getElementById("photo");
   const photoInvalid = document.getElementById("photoInvalid");
 
-  // ============================================================
-  // 1. Load species list
-  // ============================================================
+  // ======================================================
+  // 1. LOAD SPECIES LIST INTO SCROLLABLE BOX
+  // ======================================================
   async function loadSpeciesList() {
     try {
       const res = await fetch("/api/birds/species");
       const species = await res.json();
 
-      speciesSelect.innerHTML = `<option value="">-- Select Species (optional) --</option>`;
+      speciesList.innerHTML = ""; // Clear loading text
 
       species.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s.comName;
-        opt.textContent = s.sciName ? `${s.comName} (${s.sciName})` : s.comName;
-        speciesSelect.appendChild(opt);
+        const row = document.createElement("div");
+        row.className = "p-2 border-bottom";
+        row.style.cursor = "pointer";
+        row.textContent = s.sciName
+          ? `${s.comName} (${s.sciName})`
+          : s.comName;
+
+        // When clicked → fill hidden bird input
+        row.addEventListener("click", () => {
+          birdInput.value = s.comName;
+          alert(`Selected: ${s.comName}`);
+        });
+
+        speciesList.appendChild(row);
       });
 
     } catch (err) {
       console.error("Failed loading species:", err);
-      speciesSelect.innerHTML = `<option>Error loading species</option>`;
+      speciesList.innerHTML = `<p class="text-danger">Error loading species</p>`;
     }
   }
-
   loadSpeciesList();
 
-  // ============================================================
-  // 2. Species dropdown autofill
-  // ============================================================
-  speciesSelect.addEventListener("change", () => {
-    if (speciesSelect.value) {
-      birdInput.value = speciesSelect.value;
-    }
-  });
-
-  // ============================================================
-  // 3. Identify modal open
-  // ============================================================
+  // ======================================================
+  // 2. OPEN IDENTIFY MODAL
+  // ======================================================
   if (identifyBtn && modal) {
     identifyBtn.addEventListener("click", () => modal.show());
   }
 
-  // ============================================================
-  // 4. Survey filter
-  // ============================================================
-  if (surveyBtn) {
-    surveyBtn.addEventListener("click", async () => {
-      loading.style.display = "block";
-      birdResults.innerHTML = "";
-
-      try {
-        const res = await fetch("/api/birds/species");
-        const birds = await res.json();
-
-        const matches = filterBirds(birds);
-        loading.style.display = "none";
-        renderBirdList(matches);
-
-      } catch (err) {
-        loading.style.display = "none";
-        alert("Failed to load bird list.");
-        console.error(err);
-      }
-    });
-  }
-
-  function filterBirds(allBirds) {
-    const color = colorSelect?.value.toLowerCase() || "";
-    const size = sizeSelect?.value.toLowerCase() || "";
-    const beak = beakSelect?.value.toLowerCase() || "";
-
-    return allBirds.filter(bird => {
-      const name = bird.comName.toLowerCase();
-      if (color && !name.includes(color)) return false;
-      if (size && !name.includes(size)) return false;
-      if (beak && !name.includes(beak)) return false;
-      return true;
-    });
-  }
-
-  function renderBirdList(list) {
+  // ======================================================
+  // 3. GEMINI AI IDENTIFY BIRDS
+  // ======================================================
+  surveyBtn.addEventListener("click", async () => {
+    loading.style.display = "block";
     birdResults.innerHTML = "";
 
-    if (list.length === 0) {
-      birdResults.innerHTML = `<p class="text-danger">No birds matched your description.</p>`;
-      return;
-    }
+    const color = colorSelect.value;
+    const size = sizeSelect.value;
+    const beak = beakSelect.value;
+    const location = locationInput?.value || "";
 
-    list.forEach(bird => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "list-group-item list-group-item-action";
-      item.textContent = bird.comName;
-
-      item.addEventListener("click", () => {
-        birdInput.value = bird.comName;
-        modal?.hide();
+    try {
+      const res = await fetch("/api/ai-identify-bird", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color, size, beak, location })
       });
 
-      birdResults.appendChild(item);
-    });
-  }
+      const data = await res.json();
+      loading.style.display = "none";
 
-  // ============================================================
-  // 5. Required image validation
-  // ============================================================
+      if (data.error) {
+        birdResults.innerHTML = `<p class="text-danger">AI failed to identify bird.</p>`;
+        return;
+      }
+
+      // Gemini returns a string like “American Robin, Bald Eagle, …”
+      const birds = data.birds || data.bird.split(",").map(b => b.trim());
+
+      birds.forEach(name => {
+        const btn = document.createElement("button");
+        btn.className = "list-group-item list-group-item-action fw-bold";
+        btn.textContent = name;
+
+        btn.addEventListener("click", () => {
+          birdInput.value = name;
+          modal?.hide();
+        });
+
+        birdResults.appendChild(btn);
+      });
+
+    } catch (err) {
+      loading.style.display = "none";
+      console.error(err);
+      birdResults.innerHTML = `<p class="text-danger">Failed to identify bird.</p>`;
+    }
+  });
+
+  // ======================================================
+  // 4. REQUIRED IMAGE VALIDATION
+  // ======================================================
   if (photoInput) {
     photoInput.addEventListener("change", () => {
       if (photoInput.files.length > 0) {
@@ -140,9 +129,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ============================================================
-  // 6. Geocode location input
-  // ============================================================
+  // ======================================================
+  // 5. GEOCODE LOCATION → LAT/LNG
+  // ======================================================
   if (locationInput) {
     locationInput.addEventListener("blur", async () => {
       const text = locationInput.value.trim();
