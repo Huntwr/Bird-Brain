@@ -200,7 +200,6 @@ app.get("/profile", isAuthenticated, async (req, res) => {
   });
 });
 
-
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {
     const userId = req.session.user.id;
@@ -230,7 +229,6 @@ app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), a
     res.status(500).send("Error updating profile");
   }
 });
-
 
 // API Routes
 app.get("/api/user", isAuthenticated, (req, res) => {
@@ -392,25 +390,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
 // Get incoming friend requests for current user
 app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
   // For localStorage approach, return empty - frontend will handle this
-  res.json([]);
-});
-
-// Mapbox API Key route
-app.get("/config", (req, res) => {
-  res.json({
-    mapboxKey: process.env.MAPBOX_API_KEY
-  });
-});
-
-// Get incoming friend requests for current user
-app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
-  // For now, return empty array since we don't have a requests table
-  res.json([]);
-});
-
-// Get outgoing friend requests for current user  
-app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
-  // For now, return empty array since we don't have a requests table
   res.json([]);
 });
 
