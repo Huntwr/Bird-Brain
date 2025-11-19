@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // When clicked → fill hidden bird input
 row.addEventListener("click", () => {
   birdInput.value = s.comName;
+  document.getElementById("selectedBirdDisplay").textContent = s.comName;
 });
 
         speciesList.appendChild(row);
