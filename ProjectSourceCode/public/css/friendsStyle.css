@@ -526,3 +526,277 @@
     color: #666;
     margin-top: 4px;
 }
+
+/* Sleek Friend Card Design */
+.friend-card {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    margin: 8px 0;
+    background: white;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.friend-card:hover {
+    background: #f8f9ff;
+    border-color: #4a90e2;
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.1);
+    transform: translateY(-1px);
+}
+
+.friend-card.selected {
+    background: #e3f2fd;
+    border-color: #4a90e2;
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.15);
+}
+
+.friend-avatar-container {
+    position: relative;
+    margin-right: 16px;
+}
+
+.friend-card .friend-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e8e8e8;
+    transition: border-color 0.2s ease;
+}
+
+.friend-card:hover .friend-avatar {
+    border-color: #4a90e2;
+}
+
+.online-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    background: #4caf50;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.friend-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.friend-card .friend-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.friend-card .friend-actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.friend-card:hover .friend-actions {
+    opacity: 1;
+}
+
+.friend-card .remove-friend-btn {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.friend-card .remove-friend-btn:hover {
+    background: #fee;
+    color: #f44336;
+}
+
+.friend-card .favorite-btn {
+    background: none;
+    border: none;
+    color: #ffc107;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+}
+
+.friend-card .favorite-btn:hover {
+    background: #fff8e1;
+    transform: scale(1.1);
+}
+
+/* Friend Profile Detail View */
+.friend-profile {
+    padding: 0;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    padding: 24px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 20px;
+    border: 3px solid #e8e8e8;
+}
+
+.profile-info h2 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.posts-count {
+    margin: 0;
+    color: #666;
+    font-size: 16px;
+}
+
+/* Bird Posts Grid */
+.posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 0;
+}
+
+.post-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid #e8e8e8;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.bird-species {
+    margin: 0;
+    color: #2c5530;
+    font-size: 18px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.post-date {
+    font-size: 14px;
+    color: #999;
+    font-weight: normal;
+}
+
+.post-details {
+    margin-top: 12px;
+}
+
+.post-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.location, .sighting-date {
+    font-size: 14px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.post-notes {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    color: #555;
+    font-size: 14px;
+    line-height: 1.4;
+    border-left: 3px solid #4a90e2;
+}
+
+/* No Posts State */
+.no-posts {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-posts-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.no-posts h3 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 20px;
+}
+
+.no-posts p {
+    margin: 0;
+    font-size: 16px;
+}
+
+/* Loading and Error States */
+.posts-loading, .posts-error {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.no-friend-selected {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-friend-selected h3 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 20px;
+}
+
+.no-friend-selected p {
+    margin: 0;
+    font-size: 16px;
+}

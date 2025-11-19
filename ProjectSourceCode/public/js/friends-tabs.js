@@ -71,16 +71,29 @@ function renderFavoritesList() {
         
         favoriteFriends.forEach((friend) => {
             const originalIndex = friends.findIndex(f => f.id === friend.id);
+            const profilePic = friend.profile_picture ? friend.profile_picture : '/images/default_pfp.png';
+            
             friendsHTML += `
-                <div class="friend-item" onclick="selectFriend(${originalIndex})" data-friend-id="${friend.id}">
-                    <div class="friend-info">
+                <div class="friend-card" onclick="selectFriend(${originalIndex})" data-friend-id="${friend.id}">
+                    <div class="friend-avatar-container">
+                        <img src="${profilePic}" alt="${friend.name}" class="friend-avatar">
+                        <div class="online-indicator"></div>
+                    </div>
+                    <div class="friend-details">
                         <div class="friend-name">${friend.name} ⭐</div>
-                        <div class="friend-email">${friend.email}</div>
-                        <div class="friend-status">${friend.status}</div>
                     </div>
                     <div class="friend-actions">
-                        <button class="favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(${friend.id})" title="Remove from favorites">⭐</button>
-                        <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})">&times;</button>
+                        <button class="favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(${friend.id})" title="Remove from favorites">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                        </button>
+                        <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})" title="Remove friend">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             `;
@@ -116,18 +129,20 @@ function renderRequestsList() {
         `;
         
         friendRequests.forEach((request, index) => {
+            const requestDate = new Date(request.created_at).toLocaleDateString();
+            
             requestsHTML += `
                 <div class="friend-item request-item">
                     <div class="friend-info">
-                        <div class="friend-name">${request.senderName}</div>
-                        <div class="friend-email">${request.senderEmail}</div>
+                        <div class="friend-name">${request.requester_name || 'Unknown'}</div>
+                        <div class="friend-email">${request.requester_email || 'No email'}</div>
                         <div class="request-date">
-                            Received ${formatDate(request.timestamp)}
+                            Received ${requestDate}
                         </div>
                     </div>
                     <div class="request-actions">
-                        <button class="accept-btn" onclick="acceptFriendRequest(${index})">Accept</button>
-                        <button class="decline-btn" onclick="declineFriendRequest(${index})">Decline</button>
+                        <button class="accept-btn" onclick="acceptFriendRequest(${request.id})">Accept</button>
+                        <button class="decline-btn" onclick="declineFriendRequest(${request.id})">Decline</button>
                     </div>
                 </div>
             `;
@@ -152,57 +167,6 @@ function toggleFavorite(friendId) {
     const friend = friends.find(f => f.id === friendId);
     if (friend) {
         friend.isFavorite = !friend.isFavorite;
-        saveFriendsToStorage();
-        renderCurrentTab();
-        updateTabCounts();
-    }
-}
-
-function acceptFriendRequest(requestIndex) {
-    const request = friendRequests[requestIndex];
-
-    if (request.type === 'outgoing') {
-        alert('You cannot accept your own outgoing request!');
-        return;
-    }
-
-    const newFriend = {
-        id: Date.now(),
-        userId: request.senderId || request.userId,
-        name: request.senderName || request.name,
-        email: request.senderEmail || request.email,
-        status: 'Online',
-        likes: 0,
-        posts: [],
-        dateAdded: new Date().toISOString(),
-        isFavorite: false
-    };
-    
-    friends.push(newFriend);
-    
-    friendRequests.splice(requestIndex, 1);
-    
-    saveFriendsToStorage();
-    renderCurrentTab();
-    updateTabCounts();
-    
-    alert(`${request.name} is now your friend!`);
-}
-
-function declineFriendRequest(requestIndex) {
-    const request = friendRequests[requestIndex];
-    if (confirm(`Decline friend request from ${request.senderName || request.name}?`)) {
-        friendRequests.splice(requestIndex, 1);
-        saveFriendsToStorage();
-        renderCurrentTab();
-        updateTabCounts();
-    }
-}
-
-function cancelFriendRequest(requestIndex) {
-    const request = friendRequests[requestIndex];
-    if (confirm(`Cancel friend request to ${request.recipientName || request.name}?`)) {
-        friendRequests.splice(requestIndex, 1);
         saveFriendsToStorage();
         renderCurrentTab();
         updateTabCounts();

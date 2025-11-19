@@ -18,3 +18,15 @@ CREATE TABLE IF NOT EXISTS bird_logs (
   notes VARCHAR(500),
   sighting_date_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Friends/Friendship table to handle friend relationships
+CREATE TABLE IF NOT EXISTS friendships (
+  id SERIAL PRIMARY KEY,
+  requester_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'blocked')),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(requester_id, receiver_id),
+  CHECK (requester_id != receiver_id)
+);

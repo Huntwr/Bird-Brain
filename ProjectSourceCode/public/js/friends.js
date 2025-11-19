@@ -4,81 +4,45 @@ let friendRequests = [];
 let selectedFriend = null;
 let currentTab = 'friends';
 
-function getUserStorageKey(suffix) {
-    if (!window.currentUser || !window.currentUser.id) {
-        console.error('Current user not available');
-        return `birdBrain${suffix}`;
-    }
-    return `birdBrain${suffix}_user${window.currentUser.id}`;
-}
-
-function getStorageKeyForUser(suffix, userId) {
-    return `birdBrain${suffix}_user${userId}`;
-}
-
-function clearAllFriendData() {
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.includes('birdBrain') || key.includes('Friends') || key.includes('Requests'))) {
-            localStorage.removeItem(key);
+// Load friends from database
+async function loadFriendsFromDatabase() {
+    try {
+        const response = await fetch('/api/friends', {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            friends = await response.json();
+        } else {
+            console.error('Failed to load friends');
+            friends = [];
         }
-    }
-}
-
-function loadFriendsFromStorage() {
-    const storedFriends = localStorage.getItem(getUserStorageKey('Friends'));
-    if (storedFriends) {
-        friends = JSON.parse(storedFriends);
-    } else {
+    } catch (error) {
+        console.error('Error loading friends:', error);
         friends = [];
     }
+}
 
-    const requestsKey = getUserStorageKey('IncomingRequests');
-    console.log('Looking for requests with key:', requestsKey);
-    const storedRequests = localStorage.getItem(requestsKey);
-    console.log('Found stored requests:', storedRequests);
-    if (storedRequests) {
-        friendRequests = JSON.parse(storedRequests);
-    } else {
+// Load friend requests from database
+async function loadFriendRequestsFromDatabase() {
+    try {
+        console.log('Loading friend requests from database...');
+        const response = await fetch('/api/friends/requests/incoming', {
+            credentials: 'include'
+        });
+        console.log('Response status:', response.status);
+        if (response.ok) {
+            friendRequests = await response.json();
+        } else {
+            console.error('Failed to load friend requests, status:', response.status);
+            friendRequests = [];
+        }
+    } catch (error) {
+        console.error('Error loading friend requests:', error);
         friendRequests = [];
     }
 }
 
-// Save friends to localStorage
-function saveFriendsToStorage() {
-    localStorage.setItem(getUserStorageKey('Friends'), JSON.stringify(friends));
-    localStorage.setItem(getUserStorageKey('IncomingRequests'), JSON.stringify(friendRequests));
-}
-
-// Save friend requests to localStorage
-function saveFriendRequests(requests) {
-    friendRequests = requests || friendRequests;
-    localStorage.setItem(getUserStorageKey('IncomingRequests'), JSON.stringify(friendRequests));
-}
-
-// Validate if email exists in the system
-async function validateEmail(email) {
-    try {
-        const response = await fetch(`/api/users/check-email/${encodeURIComponent(email)}`);
-        
-        if (response.status === 404) {
-            return { exists: false, message: `Email "${email}" does not exist in Bird Brain.` };
-        }
-        
-        if (!response.ok) {
-            return { exists: false, message: 'Unable to verify email. Please try again.' };
-        }
-        
-        const userData = await response.json();
-        return { exists: true, userData: userData };
-        
-    } catch (error) {
-        console.error('Error validating email:', error);
-        return { exists: false, message: 'Unable to verify email. Please check your connection.' };
-    }
-}
-
-// Add a new friend
+// Add a new friend request
 async function addFriend(friendData) {
     try {
         const response = await fetch('/api/friends/request', {
@@ -86,6 +50,7 @@ async function addFriend(friendData) {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({
                 recipientEmail: friendData.email
             })
@@ -98,31 +63,8 @@ async function addFriend(friendData) {
             return false;
         }
 
-        const recipientStorageKey = getStorageKeyForUser('IncomingRequests', result.request.recipientId);
-        console.log('Storing request with key:', recipientStorageKey);
-        const existingRecipientRequests = JSON.parse(localStorage.getItem(recipientStorageKey) || '[]');
-        
-        const existingRequest = existingRecipientRequests.find(r => r.senderEmail === result.request.senderEmail);
-        if (!existingRequest) {
-            const incomingRequest = {
-                id: result.request.id,
-                senderId: result.request.senderId,
-                senderName: result.request.senderName,
-                senderEmail: result.request.senderEmail,
-                status: 'pending',
-                timestamp: result.request.timestamp,
-                type: 'incoming'
-            };
-            
-            existingRecipientRequests.push(incomingRequest);
-            localStorage.setItem(recipientStorageKey, JSON.stringify(existingRecipientRequests));
-            console.log('Successfully stored request for recipient:', result.request.recipientId, 'with key:', recipientStorageKey);
-        }
-
         alert(result.message);
-        
         closeAddFriendModal();
-        
         return true;
     } catch (error) {
         console.error('Error sending friend request:', error);
@@ -131,24 +73,94 @@ async function addFriend(friendData) {
     }
 }
 
-function removeFriend(friendId) {
-    if (confirm('Are you sure you want to remove this friend?')) {
-        friends = friends.filter(f => f.id !== friendId);
-        saveFriendsToStorage();
-        selectedFriend = null;
-        renderFriendsList();
-        renderSelectedFriend();
+// Accept a friend request
+async function acceptFriendRequest(requestId) {
+    try {
+        const response = await fetch(`/api/friends/accept/${requestId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Friend request accepted!');
+            await loadFriendsFromDatabase();
+            await loadFriendRequestsFromDatabase();
+            renderCurrentTab();
+            updateTabCounts();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error('Error accepting friend request:', error);
+        alert('Error accepting friend request. Please try again.');
     }
 }
 
-function loadFriendsPage() {
-    loadFriendsFromStorage();
+// Decline a friend request
+async function declineFriendRequest(requestId) {
+    try {
+        const response = await fetch(`/api/friends/decline/${requestId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Friend request declined');
+            await loadFriendRequestsFromDatabase();
+            renderCurrentTab();
+            updateTabCounts();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error('Error declining friend request:', error);
+        alert('Error declining friend request. Please try again.');
+    }
+}
+
+// Remove a friend
+async function removeFriend(friendId) {
+    if (confirm('Are you sure you want to remove this friend?')) {
+        try {
+            const response = await fetch(`/api/friends/${friendId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Friend removed successfully');
+                selectedFriend = null;
+                await loadFriendsFromDatabase();
+                renderCurrentTab();
+                updateTabCounts();
+                renderSelectedFriend();
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            console.error('Error removing friend:', error);
+            alert('Error removing friend. Please try again.');
+        }
+    }
+}
+
+// Load the friends page
+async function loadFriendsPage() {
+    await loadFriendsFromDatabase();
+    await loadFriendRequestsFromDatabase();
     initializeTabs();
     renderCurrentTab();
     updateTabCounts();
     renderSelectedFriend();
 }
 
+// Render friends list
 function renderFriendsList() {
     const friendsList = document.querySelector('.friends-list');
     
@@ -157,6 +169,9 @@ function renderFriendsList() {
             <div class="friends-header">
                 <h3>Friends (0)</h3>
                 <button class="add-friend-btn" onclick="openAddFriendModal()">+ Add Friend</button>
+            </div>
+            <div class="empty-state">
+                <p>No friends yet. Add some friends to start chatting!</p>
             </div>
         `;
     } else {
@@ -169,15 +184,25 @@ function renderFriendsList() {
         `;
         
         friends.forEach((friend, index) => {
+            const profilePic = friend.profile_picture ? friend.profile_picture : '/images/default_pfp.png';
+            
             friendsHTML += `
-                <div class="friend-item" onclick="selectFriend(${index})" data-friend-id="${friend.id}">
-                    <div class="friend-info">
+                <div class="friend-card ${selectedFriend && selectedFriend.id === friend.id ? 'selected' : ''}" 
+                     onclick="selectFriend(${index})" data-friend-id="${friend.id}">
+                    <div class="friend-avatar-container">
+                        <img src="${profilePic}" alt="${friend.name}" class="friend-avatar">
+                        <div class="online-indicator"></div>
+                    </div>
+                    <div class="friend-details">
                         <div class="friend-name">${friend.name}</div>
-                        <div class="friend-email">${friend.email}</div>
-                        <div class="friend-status">${friend.status}</div>
                     </div>
                     <div class="friend-actions">
-                        <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})">&times;</button>
+                        <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})" title="Remove friend">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             `;
@@ -188,83 +213,210 @@ function renderFriendsList() {
     }
 }
 
-function renderSelectedFriend() {
+// Render friend requests list
+function renderFriendRequests() {
+    const friendsList = document.querySelector('.friends-list');
+    
+    if (friendRequests.length === 0) {
+        friendsList.innerHTML = `
+            <div class="requests-header">
+                <h3>Friend Requests (0)</h3>
+            </div>
+            <div class="empty-state">
+                <p>No pending friend requests.</p>
+            </div>
+        `;
+    } else {
+        let requestsHTML = `
+            <div class="requests-header">
+                <h3>Friend Requests (${friendRequests.length})</h3>
+            </div>
+            <div class="requests-scroll">
+        `;
+        
+        friendRequests.forEach((request, index) => {
+            const profilePic = request.requester_profile_picture ? request.requester_profile_picture : '/images/default_pfp.png';
+            const requestDate = new Date(request.created_at).toLocaleDateString();
+            
+            requestsHTML += `
+                <div class="request-item">
+                    <img src="${profilePic}" alt="${request.requester_name}" class="request-avatar">
+                    <div class="request-info">
+                        <div class="requester-name">${request.requester_name}</div>
+                        <div class="requester-email">${request.requester_email}</div>
+                        <div class="request-date">Sent ${requestDate}</div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="accept-btn" onclick="acceptFriendRequest(${request.id})">Accept</button>
+                        <button class="decline-btn" onclick="declineFriendRequest(${request.id})">Decline</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        requestsHTML += '</div>';
+        friendsList.innerHTML = requestsHTML;
+    }
+}
+
+// Select a friend
+function selectFriend(index) {
+    selectedFriend = friends[index];
+    renderFriendsList(); // Re-render to show selection
+    renderSelectedFriend();
+}
+
+// Render selected friend details
+async function renderSelectedFriend() {
     const postsSection = document.querySelector('.posts-section');
 
     if (currentTab === 'invite') {
         postsSection.innerHTML = '';
         return;
     }
+
+    if (currentTab === 'requests') {
+        postsSection.innerHTML = `
+            <div class="requests-info">
+                <h3>Friend Requests</h3>
+                <p>Manage your incoming friend requests here. Accept or decline requests from other users.</p>
+            </div>
+        `;
+        return;
+    }
     
     if (selectedFriend === null) {
         postsSection.innerHTML = `
-            <div class="empty-state">
-                <h3>Select a Friend</h3>
-                <p>Choose a friend from the list to view their posts and activity.</p>
+            <div class="no-friend-selected">
+                <h3>Select a friend</h3>
+                <p>Choose a friend from the list to see their profile and bird posts.</p>
             </div>
         `;
-    } else {
-        const friend = friends[selectedFriend];
-        if (!friend) {
-            selectedFriend = null;
-            renderSelectedFriend();
-            return;
-        }
+        return;
+    }
 
-        if (friend.posts.length === 0) {
-            postsSection.innerHTML = `
-                <div class="posts-header">
-                    <h3>${friend.name}</h3>
-                    <div>
-                        <span>Posts (0)</span>
-                        <span>Likes (${friend.likes || 0})</span>
-                        <button class="like-button" onclick="likeFriend(${selectedFriend})">♥</button>
-                    </div>
+    const profilePic = selectedFriend.profile_picture ? selectedFriend.profile_picture : '/images/default_pfp.png';
+    
+    // Show loading state
+    postsSection.innerHTML = `
+        <div class="friend-profile">
+            <div class="profile-header">
+                <img src="${profilePic}" alt="${selectedFriend.name}" class="profile-avatar">
+                <div class="profile-info">
+                    <h2>${selectedFriend.name}</h2>
                 </div>
-                <div class="empty-state">
-                    <h4>No Posts Yet</h4>
-                    <p>${friend.name} hasn't shared any bird posts yet.</p>
-                    <button class="add-post-btn" onclick="addSamplePost(${selectedFriend})">Add Sample Post</button>
-                </div>
-            `;
+            </div>
+            <div class="posts-loading">
+                <p>Loading bird posts...</p>
+            </div>
+        </div>
+    `;
+    
+    try {
+        // Load friend's bird posts
+        const response = await fetch(`/api/users/${selectedFriend.id}/posts`, {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const posts = await response.json();
+            renderFriendPosts(posts);
         } else {
-            let postsHTML = `
-                <div class="posts-header">
-                    <h3>${friend.name}</h3>
-                    <div>
-                        <span>Posts (${friend.posts.length})</span>
-                        <span>Likes (${friend.likes || 0})</span>
-                        <button class="like-button" onclick="likeFriend(${selectedFriend})">♥</button>
+            postsSection.innerHTML = `
+                <div class="friend-profile">
+                    <div class="profile-header">
+                        <img src="${profilePic}" alt="${selectedFriend.name}" class="profile-avatar">
+                        <div class="profile-info">
+                            <h2>${selectedFriend.name}</h2>
+                        </div>
+                    </div>
+                    <div class="posts-error">
+                        <p>Error loading posts</p>
                     </div>
                 </div>
-                <div class="posts-grid">
             `;
-            
-            friend.posts.forEach((post, postIndex) => {
-                postsHTML += `
-                    <div class="post-item" onclick="viewPost(${selectedFriend}, ${postIndex})">
-                        <div class="post-content">${post.content}</div>
-                        <div class="post-date">${formatDate(post.date)}</div>
-                    </div>
-                `;
-            });
-            
-            postsHTML += '</div>';
-            postsSection.innerHTML = postsHTML;
         }
+    } catch (error) {
+        console.error('Error loading friend posts:', error);
+        postsSection.innerHTML = `
+            <div class="friend-profile">
+                <div class="profile-header">
+                    <img src="${profilePic}" alt="${selectedFriend.name}" class="profile-avatar">
+                    <div class="profile-info">
+                        <h2>${selectedFriend.name}</h2>
+                    </div>
+                </div>
+                <div class="posts-error">
+                    <p>Error loading posts</p>
+                </div>
+            </div>
+        `;
     }
 }
 
-function selectFriend(index) {
-    selectedFriend = index;
-    document.querySelectorAll('.friend-item').forEach((item, i) => {
-        if (i === index) {
-            item.classList.add('selected');
-        } else {
-            item.classList.remove('selected');
-        }
-    });
-    renderSelectedFriend();
+// Render friend's bird posts in a grid
+function renderFriendPosts(posts) {
+    const postsSection = document.querySelector('.posts-section');
+    const profilePic = selectedFriend.profile_picture ? selectedFriend.profile_picture : '/images/default_pfp.png';
+    
+    let postsHTML = '';
+    
+    if (posts.length === 0) {
+        postsHTML = `
+            <div class="no-posts">
+                <div class="no-posts-icon">🐦</div>
+                <h3>No bird posts yet</h3>
+                <p>${selectedFriend.name} hasn't posted any bird sightings yet.</p>
+            </div>
+        `;
+    } else {
+        postsHTML = `
+            <div class="posts-grid">
+        `;
+        
+        posts.forEach((post) => {
+            const postDate = new Date(post.sighting_date_at).toLocaleDateString();
+            const sightingDate = post.sighting_date ? new Date(post.sighting_date).toLocaleDateString() : 'Unknown date';
+            
+            postsHTML += `
+                <div class="post-card">
+                    <div class="post-header">
+                        <h4 class="bird-species">${post.species || 'Unknown Species'}</h4>
+                        <span class="post-date">${postDate}</span>
+                    </div>
+                    <div class="post-details">
+                        <div class="post-info">
+                            <span class="location">📍 ${post.location || 'Unknown location'}</span>
+                            <span class="sighting-date">🗓️ Spotted on ${sightingDate}</span>
+                        </div>
+                        ${post.notes ? `<div class="post-notes">${post.notes}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        postsHTML += '</div>';
+    }
+    
+    postsSection.innerHTML = `
+        <div class="friend-profile">
+            <div class="profile-header">
+                <img src="${profilePic}" alt="${selectedFriend.name}" class="profile-avatar">
+                <div class="profile-info">
+                    <h2>${selectedFriend.name}</h2>
+                    <p class="posts-count">${posts.length} bird ${posts.length === 1 ? 'post' : 'posts'}</p>
+                </div>
+            </div>
+            ${postsHTML}
+        </div>
+    `;
+}
+
+// Update tab counts
+function updateTabCounts() {
+    document.getElementById('friends-count').textContent = friends.length;
+    document.getElementById('requests-count').textContent = friendRequests.length;
+    document.getElementById('favorites-count').textContent = '0'; // Placeholder for future feature
 }
 
 function likeFriend(friendIndex) {
