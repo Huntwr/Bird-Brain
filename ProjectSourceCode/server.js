@@ -4,23 +4,37 @@ const path = require("path");
 const session = require("express-session");
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 require("dotenv").config();
+
 
 const multer = require("multer");
 
-// Multer storage for profile pictures
+// Multer storage for BOTH profile pics and bird photos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, "public/uploads"));
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const filename = `profile_${req.session.user.id}${ext}`;
-    cb(null, filename);
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ext;
+    cb(null, uniqueName);
   }
 });
 
 const upload = multer({ storage: storage });
+
+
+
+// support fetch for Node < 18
+const fetch = global.fetch || ((...args) =>
+  import("node-fetch").then(({ default: f }) => f(...args))
+);
+
+// eBird API Key
+const EBIRD_API_KEY = process.env.EBIRD_API_KEY;
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,7 +64,7 @@ app.set("views", path.join(__dirname, "views"));
 
 // Middleware
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -74,6 +88,106 @@ function isAuthenticated(req, res, next) {
 // Redirect root to login
 app.get("/", (req, res) => {
   res.redirect("/login");
+});
+// ======================
+// eBird Species List API
+// ======================
+app.get("/api/birds/species", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      {
+        headers: { "X-eBirdApiToken": EBIRD_API_KEY }
+      }
+    );
+
+    const data = await response.json();
+    res.json(data);
+
+  } catch (err) {
+    console.error("Species list error:", err);
+    res.status(500).json({ error: "Failed to fetch species list" });
+  }
+});
+
+
+// ======================
+// Geocode (text → lat/lng)
+// ======================
+app.get("/api/geocode", async (req, res) => {
+  const text = req.query.text;
+  if (!text) return res.json({});
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data || data.length === 0) {
+      return res.json({});
+    }
+
+    res.json({
+      lat: data[0].lat,
+      lng: data[0].lon
+    });
+
+  } catch (err) {
+    console.error("Geocode failed:", err);
+    res.json({});
+  }
+});
+// ======================
+// Log Bird POST route
+// ======================
+app.post("/log-bird", upload.single("photo"), async (req, res) => {
+  try {
+    const { bird, location, time, description, latitude, longitude } = req.body;
+    const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
+
+    const userId = req.session.user.id;
+
+    await pool.query(
+      `INSERT INTO bird_sightings (user_id, bird, location, time, description, latitude, longitude, photo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [userId, bird, location, time, description, latitude, longitude, photoPath]
+    );
+
+    res.redirect("/profile"); // or wherever you want to send them
+
+  } catch (err) {
+    console.error("Error logging bird:", err);
+    res.status(500).send("Error logging bird.");
+  }
+});
+app.post("/api/ai-identify-bird", isAuthenticated, async (req, res) => {
+  try {
+    const { color, size, beak, location } = req.body;
+
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+You are an expert ornithologist. Based ONLY on the following inputs:
+
+Color: ${color || "unknown"}
+Size: ${size || "unknown"}
+Beak Type: ${beak || "unknown"}
+Location (optional): ${location || "unknown"}
+
+Return A 10-15 of likely bird species found in North America that matches these traits, and that it is a bird found from eBird by the Cornell Lab of Ornithology API.
+Return ONLY the bird species common name—no explanation, each bird seperated by a ',', no extra text.
+Example output: "American Robin, Eagle, Cardinal"
+    `;
+
+    const result = await model.generateContent(prompt);
+    const name = result.response.text().trim();
+
+    res.json({ bird: name });
+
+  } catch (err) {
+    console.error("Gemini bird identify error:", err);
+    res.status(500).json({ error: "AI identification failed" });
+  }
 });
 
 // Login & Signup pages
@@ -147,20 +261,6 @@ app.get("/log-bird", isAuthenticated, (req, res) => {
   res.render("log-bird", { title: "Log Bird" });
 });
 
-app.post("/log-bird", isAuthenticated, async (req, res) => {
-  const { species, location, date, notes } = req.body;
-  try {
-    await pool.query(
-    "INSERT INTO bird_logs (user_id, species, location, sighting_date, notes) VALUES ($1, $2, $3, $4, $5)",
-      [req.session.user.id, species, location, date, notes]
-    );
-    res.redirect("/home");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(err.message);
-  }
-});
-
 app.get("/comments", isAuthenticated, (req, res) => {
   res.render("comment", { title: "Comments" });
 });
@@ -175,12 +275,10 @@ app.get("/friends", isAuthenticated, (req, res) => {
 app.get("/profile", isAuthenticated, async (req, res) => {
   const user = req.session.user;
 
-  // Fix missing or empty profile picture
   if (!user.profile_picture) {
     user.profile_picture = "/images/default_pfp.png";
   }
 
-  // Format join date
   let formattedDate = "";
   if (user.created_at) {
     const date = new Date(user.created_at);
@@ -200,7 +298,6 @@ app.get("/profile", isAuthenticated, async (req, res) => {
   });
 });
 
-
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {
     const userId = req.session.user.id;
@@ -208,18 +305,15 @@ app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), a
 
     let profilePicPath = req.session.user.profile_picture;
 
-    // If user uploaded a new picture
     if (req.file) {
       profilePicPath = `/uploads/${req.file.filename}`;
     }
 
-    // Update database
     await pool.query(
       "UPDATE users SET profile_picture = $1, bio = $2 WHERE id = $3",
       [profilePicPath, bio, userId]
     );
 
-    // Update session
     req.session.user.profile_picture = profilePicPath;
     req.session.user.bio = bio;
 
@@ -230,7 +324,6 @@ app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), a
     res.status(500).send("Error updating profile");
   }
 });
-
 
 // API Routes
 app.get("/api/user", isAuthenticated, (req, res) => {
@@ -260,7 +353,6 @@ app.get("/api/users/check/:username", async (req, res) => {
   try {
     const username = req.params.username.toLowerCase();
     
-    // Query the database to check if username exists
     const result = await pool.query(
       "SELECT id, username FROM users WHERE LOWER(username) = $1",
       [username]
@@ -273,7 +365,6 @@ app.get("/api/users/check/:username", async (req, res) => {
       });
     }
 
-    // Username exists, return basic user info (no sensitive data)
     res.json({
       exists: true,
       user: {
@@ -295,7 +386,7 @@ app.get("/api/users/check-email/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     
-    // Query the database to check if email exists
+
     const result = await pool.query(
       "SELECT id, name, email FROM users WHERE LOWER(email) = $1",
       [email]
@@ -308,7 +399,6 @@ app.get("/api/users/check-email/:email", async (req, res) => {
       });
     }
 
-    // Email exists, return basic user info (no sensitive data)
     res.json({
       exists: true,
       user: {
@@ -327,13 +417,10 @@ app.get("/api/users/check-email/:email", async (req, res) => {
 });
 
 // Friend Request API endpoints
-
-// Send a friend request
 app.post("/api/friends/request", isAuthenticated, async (req, res) => {
   try {
     const { recipientEmail } = req.body;
     
-    // Validate input
     if (!recipientEmail) {
       return res.status(400).json({ 
         success: false, 
@@ -345,7 +432,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     const senderName = req.session.user.name;
     const senderEmail = req.session.user.email;
     
-    // First, find the recipient by email
     const recipientResult = await pool.query("SELECT id, name, email FROM users WHERE LOWER(email) = $1", [recipientEmail.toLowerCase()]);
     
     if (recipientResult.rows.length === 0) {
@@ -357,7 +443,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     
     const recipient = recipientResult.rows[0];
     
-    // Don't allow sending request to yourself
     if (recipient.id === senderId) {
       return res.status(400).json({
         success: false,
@@ -391,7 +476,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
 
 // Get incoming friend requests for current user
 app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
-  // For localStorage approach, return empty - frontend will handle this
   res.json([]);
 });
 
@@ -400,31 +484,39 @@ app.get("/config", (req, res) => {
   res.json({
     mapboxKey: process.env.MAPBOX_API_KEY
   });
-});
-
-// Get incoming friend requests for current user
-app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
-  // For now, return empty array since we don't have a requests table
-  res.json([]);
 });
 
 // Get outgoing friend requests for current user  
 app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
-  // For now, return empty array since we don't have a requests table
   res.json([]);
 });
 
-// Mapbox API Key route
-app.get("/config", (req, res) => {
-  res.json({
-    mapboxKey: process.env.MAPBOX_API_KEY
-  });
+
+// Always return the full species list (survey filters still work)
+app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      { headers: { "X-eBirdApiToken": EBIRD_API_KEY } }
+    );
+
+    const species = await response.json();
+
+    const cleaned = species.map(s => ({
+      comName: s.comName,
+      sciName: s.sciName || "",
+    }));
+
+    res.json(cleaned);
+
+  } catch (err) {
+    console.error("Bird API error:", err);
+    res.status(500).json({ error: "Failed to fetch species" });
+  }
 });
 
-app.use((err, req, res, next) => {
-  console.error('Unexpected error:', err)
-  res.status(500).send('Something went wrong. Please try again later.')
-})
 
 // Start server
 app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
+
+// merge main 
