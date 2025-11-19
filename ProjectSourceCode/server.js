@@ -518,3 +518,5 @@ app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
 
 // Start server
 app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
+
+// merge main 
