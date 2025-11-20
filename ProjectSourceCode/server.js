@@ -406,7 +406,6 @@ app.get("/profile", isAuthenticated, async (req, res) => {
   }
 });
 
-
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {
     const userId = req.session.user.id;
@@ -538,8 +537,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     }
     
     const senderId = req.session.user.id;
-    const senderName = req.session.user.name;
-    const senderEmail = req.session.user.email;
     
     const recipientResult = await pool.query("SELECT id, name, email FROM users WHERE LOWER(email) = $1", [recipientEmail.toLowerCase()]);
     
@@ -559,19 +556,48 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
       });
     }
     
+    // Check if friendship already exists (in either direction)
+    const existingFriendship = await pool.query(
+      `SELECT * FROM friendships 
+       WHERE (requester_id = $1 AND receiver_id = $2) 
+          OR (requester_id = $2 AND receiver_id = $1)`,
+      [senderId, recipient.id]
+    );
+    
+    if (existingFriendship.rows.length > 0) {
+      const friendship = existingFriendship.rows[0];
+      if (friendship.status === 'accepted') {
+        return res.status(400).json({
+          success: false,
+          message: "You are already friends with this user"
+        });
+      } else if (friendship.status === 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: "Friend request already exists"
+        });
+      }
+    }
+    
+    // Create the friendship request
+    const newFriendship = await pool.query(
+      `INSERT INTO friendships (requester_id, receiver_id, status) 
+       VALUES ($1, $2, 'pending') 
+       RETURNING *`,
+      [senderId, recipient.id]
+    );
+    
     res.json({
       success: true,
       message: `Friend request sent to ${recipient.name}`,
       request: {
-        id: Date.now(),
+        id: newFriendship.rows[0].id,
         senderId: senderId,
-        senderName: senderName,
-        senderEmail: senderEmail,
         recipientId: recipient.id,
         recipientName: recipient.name,
         recipientEmail: recipient.email,
         status: 'pending',
-        timestamp: new Date().toISOString()
+        timestamp: newFriendship.rows[0].created_at
       }
     });
   } catch (err) {
@@ -584,20 +610,171 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
 });
 
 // Get incoming friend requests for current user
-app.get("/api/friends/requests/incoming", isAuthenticated, (req, res) => {
-  res.json([]);
+app.get("/api/friends/requests/incoming", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    console.log("Checking incoming requests for user ID:", userId);
+    
+    const result = await pool.query(
+      `SELECT f.*, u.name as requester_name, u.email as requester_email, u.profile_picture as requester_profile_picture
+       FROM friendships f
+       JOIN users u ON f.requester_id = u.id
+       WHERE f.receiver_id = $1 AND f.status = 'pending'
+       ORDER BY f.created_at DESC`,
+      [userId]
+    );
+    
+    console.log("Query returned:", result.rows.length, "requests");
+    console.log("Requests:", result.rows);
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching incoming friend requests:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to fetch friend requests" 
+    });
+  }
 });
 
-// Mapbox API Key route
-app.get("/config", (req, res) => {
-  res.json({
-    mapboxKey: process.env.MAPBOX_API_KEY
-  });
+// Accept a friend request
+app.post("/api/friends/accept/:requestId", isAuthenticated, async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const userId = req.session.user.id;
+    
+    // Verify this request is for the current user and is pending
+    const result = await pool.query(
+      `UPDATE friendships 
+       SET status = 'accepted', updated_at = NOW()
+       WHERE id = $1 AND receiver_id = $2 AND status = 'pending'
+       RETURNING *`,
+      [requestId, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Friend request not found or already processed"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Friend request accepted!",
+      friendship: result.rows[0]
+    });
+  } catch (err) {
+    console.error("Error accepting friend request:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to accept friend request" 
+    });
+  }
 });
 
-// Get outgoing friend requests for current user  
-app.get("/api/friends/requests/outgoing", isAuthenticated, (req, res) => {
-  res.json([]);
+// Decline a friend request
+app.post("/api/friends/decline/:requestId", isAuthenticated, async (req, res) => {
+  try {
+    const requestId = req.params.requestId;
+    const userId = req.session.user.id;
+    
+    // Verify this request is for the current user and is pending
+    const result = await pool.query(
+      `UPDATE friendships 
+       SET status = 'declined', updated_at = NOW()
+       WHERE id = $1 AND receiver_id = $2 AND status = 'pending'
+       RETURNING *`,
+      [requestId, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Friend request not found or already processed"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Friend request declined",
+      friendship: result.rows[0]
+    });
+  } catch (err) {
+    console.error("Error declining friend request:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to decline friend request" 
+    });
+  }
+});
+
+// Get list of friends for current user
+app.get("/api/friends", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    
+    const result = await pool.query(
+      `SELECT 
+         u.id, u.name, u.email, u.profile_picture, u.bio, u.created_at,
+         f.created_at as friendship_date
+       FROM friendships f
+       JOIN users u ON (
+         CASE 
+           WHEN f.requester_id = $1 THEN u.id = f.receiver_id
+           ELSE u.id = f.requester_id
+         END
+       )
+       WHERE (f.requester_id = $1 OR f.receiver_id = $1) 
+         AND f.status = 'accepted'
+       ORDER BY f.created_at DESC`,
+      [userId]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching friends:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to fetch friends list" 
+    });
+  }
+});
+
+// Remove a friend
+app.delete("/api/friends/:friendId", isAuthenticated, async (req, res) => {
+  try {
+    const friendId = req.params.friendId;
+    const userId = req.session.user.id;
+    
+    // Delete friendship in either direction
+    const result = await pool.query(
+      `DELETE FROM friendships 
+       WHERE ((requester_id = $1 AND receiver_id = $2) 
+              OR (requester_id = $2 AND receiver_id = $1))
+         AND status = 'accepted'
+       RETURNING *`,
+      [userId, friendId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Friendship not found"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Friend removed successfully"
+    });
+  } catch (err) {
+    console.error("Error removing friend:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to remove friend" 
+    });
+  }
 });
 
 
@@ -624,6 +801,50 @@ app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
   }
 });
 
+// Get bird posts for a specific user
+app.get("/api/users/:userId/posts", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    // Check if the requested user is a friend
+    const currentUserId = req.session.user.id;
+    const friendshipCheck = await pool.query(
+      `SELECT 1 FROM friendships 
+       WHERE ((requester_id = $1 AND receiver_id = $2) OR (requester_id = $2 AND receiver_id = $1))
+         AND status = 'accepted'`,
+      [currentUserId, userId]
+    );
+    
+    if (friendshipCheck.rows.length === 0 && currentUserId != userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only view posts of your friends"
+      });
+    }
+    
+    const result = await pool.query(
+      `SELECT bl.*, u.name as user_name, u.profile_picture
+       FROM bird_logs bl
+       JOIN users u ON bl.user_id = u.id
+       WHERE bl.user_id = $1
+       ORDER BY bl.sighting_date_at DESC`,
+      [userId]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching user posts:', err);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user posts"
+    });
+  }
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unexpected error:', err)
+  res.status(500).send('Something went wrong. Please try again later.')
+})
 
 // Start server
 app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
