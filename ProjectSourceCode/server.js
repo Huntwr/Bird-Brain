@@ -143,23 +143,50 @@ app.get("/api/geocode", async (req, res) => {
 app.post("/log-bird", upload.single("photo"), async (req, res) => {
   try {
     const { bird, location, time, description, latitude, longitude } = req.body;
-    const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
-
     const userId = req.session.user.id;
 
+    // 🔥 Photo is REQUIRED
+    if (!req.file) {
+      return res.status(400).send("A bird photo is required.");
+    }
+
+    const photoPath = `/uploads/${req.file.filename}`;
+
+    // 🔥 Convert empty strings → null for optional fields
+    const safeLocation = location && location.trim() !== "" ? location : null;
+    const safeTime = time && time.trim() !== "" ? time : null;
+    const safeDescription = description && description.trim() !== "" ? description : null;
+
+    // 🔥 lat/lng must be numbers or null
+    const safeLat = latitude && latitude.trim() !== "" ? parseFloat(latitude) : null;
+    const safeLng = longitude && longitude.trim() !== "" ? parseFloat(longitude) : null;
+
     await pool.query(
-      `INSERT INTO bird_sightings (user_id, bird, location, time, description, latitude, longitude, photo)
+      `INSERT INTO bird_sightings 
+        (user_id, bird, location, time, description, latitude, longitude, photo)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [userId, bird, location, time, description, latitude, longitude, photoPath]
+      [
+        userId,
+        bird,
+        safeLocation,
+        safeTime,
+        safeDescription,
+        safeLat,
+        safeLng,
+        photoPath
+      ]
     );
 
-    res.redirect("/profile"); // or wherever you want to send them
+    res.redirect("/profile");
 
   } catch (err) {
     console.error("Error logging bird:", err);
     res.status(500).send("Error logging bird.");
   }
 });
+
+
+
 app.post("/api/ai-identify-bird", isAuthenticated, async (req, res) => {
   try {
     const { color, size, beak, location } = req.body;
@@ -273,30 +300,45 @@ app.get("/friends", isAuthenticated, (req, res) => {
 });
 
 app.get("/profile", isAuthenticated, async (req, res) => {
-  const user = req.session.user;
+  try {
+    const user = req.session.user;
 
-  if (!user.profile_picture) {
-    user.profile_picture = "/images/default_pfp.png";
-  }
-
-  let formattedDate = "";
-  if (user.created_at) {
-    const date = new Date(user.created_at);
-    formattedDate = date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-
-  res.render("profile", {
-    title: "Profile",
-    user: {
-      ...user,
-      formatted_date: formattedDate
+    // Default profile picture if none stored
+    if (!user.profile_picture) {
+      user.profile_picture = "/images/default_pfp.png";
     }
-  });
+
+    // Format created_at nicely
+    let formattedDate = "";
+    if (user.created_at) {
+      const date = new Date(user.created_at);
+      formattedDate = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // 🔥 Fetch posts by this user
+    const postsResult = await pool.query(
+      "SELECT * FROM bird_sightings WHERE user_id = $1 ORDER BY created_at DESC",
+      [user.id]
+    );
+
+    const posts = postsResult.rows;
+
+    res.render("profile", {
+      title: "Profile",
+      user: { ...user, formatted_date: formattedDate },
+      posts
+    });
+
+  } catch (err) {
+    console.error("Error loading profile:", err);
+    res.status(500).send("Error loading profile");
+  }
 });
+
 
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {
