@@ -119,24 +119,46 @@ app.get("/api/geocode", async (req, res) => {
   if (!text) return res.json({});
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`;
-    const response = await fetch(url);
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      text
+    )}`;
+
+    const response = await fetch(url, {
+      headers: {
+        // Nominatim *requires* a proper User-Agent with contact info
+        "User-Agent": "BirdBrain/1.0 (your-email@example.com)",
+        "Accept": "application/json",
+      },
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+
+    // If it's not JSON, log the HTML so we can see what's going on
+    if (!contentType.includes("application/json")) {
+      const bodyText = await response.text();
+      console.error(
+        "Geocode response is not JSON, body preview:\n",
+        bodyText.slice(0, 500)
+      );
+      return res.json({});
+    }
+
     const data = await response.json();
 
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return res.json({});
     }
 
     res.json({
       lat: data[0].lat,
-      lng: data[0].lon
+      lng: data[0].lon,
     });
-
   } catch (err) {
     console.error("Geocode failed:", err);
     res.json({});
   }
 });
+
 // ======================
 // Log Bird POST route
 // ======================
@@ -145,22 +167,22 @@ app.post("/log-bird", upload.single("photo"), async (req, res) => {
     const { bird, location, time, description, latitude, longitude } = req.body;
     const userId = req.session.user.id;
 
-    // 🔥 Photo is REQUIRED
+    // Photo is REQUIRED
     if (!req.file) {
       return res.status(400).send("A bird photo is required.");
     }
 
     const photoPath = `/uploads/${req.file.filename}`;
 
-    // 🔥 Convert empty strings → null for optional fields
+    //  Convert empty strings → null for optional fields
     const safeLocation = location && location.trim() !== "" ? location : null;
     const safeTime = time && time.trim() !== "" ? time : null;
     const safeDescription = description && description.trim() !== "" ? description : null;
 
-    // 🔥 lat/lng must be numbers or null
+    // lat/lng must be numbers or null
     const safeLat = latitude && latitude.trim() !== "" ? parseFloat(latitude) : null;
     const safeLng = longitude && longitude.trim() !== "" ? parseFloat(longitude) : null;
-
+    console.log(safeLat, safeLng);
     await pool.query(
       `INSERT INTO bird_sightings 
         (user_id, bird, location, time, description, latitude, longitude, photo)
@@ -347,9 +369,13 @@ app.get("/home", isAuthenticated, async (req, res) => {
     res.status(500).send("Error loading home feed");
   }
 });
+
+
 app.get("/log-bird", isAuthenticated, (req, res) => {
   res.render("log-bird", { title: "Log Bird" });
 });
+
+
 
 app.get("/map", isAuthenticated, (req, res) => {
   res.render("map", { title: "Map" });
