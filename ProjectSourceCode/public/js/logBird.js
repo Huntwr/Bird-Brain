@@ -18,8 +18,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const beakSelect = document.getElementById("beakSelect");
 
   const identifyModalEl = document.getElementById("identifyModal");
-  const modal = identifyModalEl ? new bootstrap.Modal(identifyModalEl) : null;
-
+const modal = {
+  show() {
+    document.getElementById("identifyModal").style.display = "flex";
+  },
+  hide() {
+    document.getElementById("identifyModal").style.display = "none";
+  }
+};
   const locationInput = document.getElementById("location");
   const latField = document.getElementById("latitude");
   const lngField = document.getElementById("longitude");
@@ -98,19 +104,21 @@ row.addEventListener("click", () => {
       // Gemini returns a string like “American Robin, Bald Eagle, …”
       const birds = data.birds || data.bird.split(",").map(b => b.trim());
 
-      birds.forEach(name => {
-        const btn = document.createElement("button");
-        btn.className = "list-group-item list-group-item-action fw-bold";
-        btn.textContent = name;
+// Show caption
+document.getElementById("possibleBirdsHeader").style.display = "block";
 
-        btn.addEventListener("click", () => {
-          birdInput.value = name;
-          modal?.hide();
-        });
+// Create list items
+birds.forEach(name => {
+  const li = document.createElement("li");
+  li.textContent = name;
 
-        birdResults.appendChild(btn);
-      });
+  li.addEventListener("click", () => {
+    birdInput.value = name;
+    document.getElementById("identifyModal").style.display = "none"; // close modal
+  });
 
+  birdResults.appendChild(li);
+});
     } catch (err) {
       loading.style.display = "none";
       console.error(err);

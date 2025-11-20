@@ -1,104 +1,200 @@
-<div class="container py-5">
+<style>
+  /* --- Wide Page Override Layout --- */
+  .logbird-container {
+    width: 95%;
+    max-width: 1200px;
+    margin: 2rem auto;
+    background: #fffaf5;
+    padding: 2rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(78, 52, 46, 0.2);
+  }
+
+  /* Two-column layout */
+  .logbird-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+  }
+
+  .logbird-col {
+    flex: 1;
+    min-width: 330px;
+  }
+
+  /* Species list */
+  #speciesListBox {
+    border: 1px solid #d7ccc8;
+    border-radius: 12px;
+    padding: 0.75rem;
+    height: 300px;
+    overflow-y: auto;
+    background: #fffaf5;
+  }
+
+  #speciesList > div {
+    padding: 0.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  }
+  #speciesList > div:hover {
+    background: #f0e6df;
+  }
+
+  /* Selected bird box */
+  .selected-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f2ec;
+    border: 1px solid #d7ccc8;
+    border-radius: 12px;
+  }
+  .bird-results-list li {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: #fff8f0;
+  border: 1px solid #d7ccc8;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  list-style-type: disc;
+  transition: background 0.2s ease;
+}
+
+.bird-results-list li:hover {
+  background: #f0e6df;
+}
+
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed #d7ccc8;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    background: #fffaf5;
+    cursor: pointer;
+  }
+
+  /* Custom Modal */
+  .modal-overlay {
+    position: fixed;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 999;
+  }
+
+  .modal-box {
+    background: #fffaf5;
+    padding: 2rem;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .modal-close {
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: #5d4037;
+  }
+
+  /* Bird Results Buttons */
+  .bird-result-btn {
+    width: 100%;
+    text-align: left;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+    background: #fff8f0;
+    border: 1px solid #d7ccc8;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .bird-result-btn:hover {
+    background: #f0e6df;
+  }
+</style>
+
+
+
+<div class="logbird-container">
 
   <h1 class="h3 mb-4">Log a Bird Sighting</h1>
 
-  <form
-    class="needs-validation"
-    novalidate
-    action="/log-bird"
-    method="POST"
-    enctype="multipart/form-data"
-  >
+  <form action="/log-bird" method="POST" enctype="multipart/form-data">
 
-    <div class="row g-4">
-      <div class="col-lg-6">
+    <div class="logbird-row">
 
-<!-- Species list (CTRL+F enabled) -->
-<div class="mb-3">
-  <label class="form-label">Choose Species (CTRL+F to search)</label>
+      <!-- LEFT SIDE -->
+      <div class="logbird-col">
 
-  <div id="speciesListBox"
-       style="border: 1px solid #ccc; border-radius: 6px; height: 300px; overflow-y: scroll;">
-    <div id="speciesList">Loading species...</div>
-  </div>
+        <label class="form-label">Choose Species (CTRL+F to search)</label>
+        <div id="speciesListBox">
+          <div id="speciesList">Loading species...</div>
+        </div>
 
-  <small class="text-secondary">
-    Tip: Press <strong>CTRL + F</strong> to search the list.
-  </small>
-  <!-- Selected Bird Display -->
-<div class="mt-3 p-3 border rounded bg-light">
-  <strong>Selected Bird:</strong>
-  <div id="selectedBirdDisplay" class="mt-1 text-primary fw-bold">
-    None selected
-  </div>
-</div>
+        <small class="text-secondary">Tip: Use <strong>CTRL+F</strong> to search.</small>
 
-<!-- Hidden required field -->
-<input type="hidden" id="bird" name="bird" required />
-</div>
+        <!-- Selected Bird -->
+        <div class="selected-box">
+          <strong>Selected Bird:</strong>
+          <div id="selectedBirdDisplay" class="mt-1 text-primary fw-bold">None selected</div>
+        </div>
 
-<button type="button" id="identifyBtn" class="btn btn-outline-info btn-sm mt-2">
-  I don't know the bird — help identify
-</button>
+        <input type="hidden" id="bird" name="bird" required />
 
-<input type="hidden" id="bird" name="bird" required />
+        <button type="button" id="identifyBtn" class="btn btn-outline-info mt-2">
+          I don't know the bird — help identify
+        </button>
 
         <!-- Location -->
-        <div class="mb-3">
+        <div class="input-group mt-3">
           <label class="form-label">Location</label>
-          <input 
-            type="text" 
-            id="location" 
-            name="location"
-            class="form-control"
-            placeholder="e.g., Chautauqua Park, Boulder, CO"
-          />
+          <input type="text" id="location" name="location" class="form-control" placeholder="e.g., Chautauqua Park, Boulder, CO" />
         </div>
 
         <input type="hidden" id="latitude" name="latitude" />
         <input type="hidden" id="longitude" name="longitude" />
 
         <!-- Time -->
-        <div class="mb-3">
+        <div class="input-group">
           <label class="form-label">Time</label>
           <input type="datetime-local" id="time" name="time" class="form-control" />
         </div>
 
         <!-- Description -->
-        <div class="mb-3">
+        <div class="input-group">
           <label class="form-label">Description</label>
-          <textarea 
-            id="description"
-            name="description"
-            class="form-control"
-            rows="7"
-            placeholder="Notes about behavior, weather, call, etc."
-          ></textarea>
+          <textarea id="description" name="description" class="form-control" rows="7"></textarea>
         </div>
 
       </div>
 
-      <!-- Photo upload -->
-      <div class="col-lg-6">
+
+
+      <!-- RIGHT SIDE -->
+      <div class="logbird-col">
         <label class="form-label">Upload Picture <span class="text-danger">(required)</span></label>
 
-        <div id="uploadZone" class="upload-drop">
-          <input 
-            id="photo" 
-            type="file" 
-            name="photo"
-            class="upload-input"
-            accept="image/*"
-            required
-          />
-
-          <div id="emptyState" class="upload-empty text-center">
-            <div class="display-6"><i class="bi bi-plus-lg"></i></div>
-            <p class="mt-2">Click or drag a photo here</p>
-          </div>
+        <div id="uploadZone" class="upload-zone">
+          <input id="photo" type="file" name="photo" accept="image/*" required />
+          <p class="text-secondary">Click or drag a photo here</p>
         </div>
 
-        <div id="photoInvalid" class="invalid-feedback d-block" style="display:none;">
+        <div id="photoInvalid" class="invalid-feedback" style="display:none;">
           Please upload a picture.
         </div>
       </div>
@@ -106,82 +202,84 @@
     </div>
 
     <hr class="my-4" />
+
     <button class="btn btn-primary">Submit</button>
     <button class="btn btn-outline-secondary" type="reset">Reset</button>
-
   </form>
 </div>
 
 
-<!-- IDENTIFY MODAL -->
-<div class="modal fade" id="identifyModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable modal-lg">
 
-    <div class="modal-content">
+<!-- ===== CUSTOM MODAL (NO BOOTSTRAP) ===== -->
+<div id="identifyModal" class="modal-overlay">
+  <div class="modal-box">
 
-      <div class="modal-header">
-        <h5 class="modal-title">Help identify your bird</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-
-        <!-- FILTERS -->
-        <div class="row mb-3">
-
-          <div class="col-md-4">
-            <label class="form-label">Color</label>
-            <select id="colorSelect" class="form-select">
-              <option value="">Any</option>
-              <option value="red">Red</option>
-              <option value="yellow">Yellow</option>
-              <option value="blue">Blue</option>
-              <option value="black">Black</option>
-              <option value="brown">Brown</option>
-              <option value="white">White</option>
-              <option value="gray">Gray</option>
-            </select>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Size</label>
-            <select id="sizeSelect" class="form-select">
-              <option value="">Any</option>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Beak Type</label>
-            <select id="beakSelect" class="form-select">
-              <option value="">Any</option>
-              <option value="short">Short</option>
-              <option value="long">Long</option>
-              <option value="hooked">Hooked</option>
-              <option value="thin">Thin</option>
-              <option value="conical">Conical</option>
-            </select>
-          </div>
-
-        </div>
-
-        <button id="surveySubmitBtn" class="btn btn-primary w-100 mb-3">
-          Find Matching Birds
-        </button>
-
-        <div id="loading" class="text-center" style="display:none;">
-          <div class="spinner-border text-primary"></div>
-          <p>Searching...</p>
-        </div>
-
-        <div id="birdResults" class="list-group"></div>
-
-      </div>
+    <div class="modal-header">
+      <h3>Identify Your Bird</h3>
+      <span id="closeModal" class="modal-close">&times;</span>
     </div>
+
+    <label class="form-label">Color</label>
+    <select id="colorSelect" class="form-select">
+      <option value="">Any</option>
+      <option value="red">Red</option>
+      <option value="yellow">Yellow</option>
+      <option value="blue">Blue</option>
+      <option value="black">Black</option>
+      <option value="brown">Brown</option>
+      <option value="white">White</option>
+      <option value="gray">Gray</option>
+    </select>
+
+    <label class="form-label mt-2">Size</label>
+    <select id="sizeSelect" class="form-select">
+      <option value="">Any</option>
+      <option value="small">Small</option>
+      <option value="medium">Medium</option>
+      <option value="large">Large</option>
+    </select>
+
+    <label class="form-label mt-2">Beak Type</label>
+    <select id="beakSelect" class="form-select">
+      <option value="">Any</option>
+      <option value="short">Short</option>
+      <option value="long">Long</option>
+      <option value="hooked">Hooked</option>
+      <option value="thin">Thin</option>
+      <option value="conical">Conical</option>
+    </select>
+
+    <button id="surveySubmitBtn" class="btn btn-primary mt-3" style="width:100%;">
+      Find Matching Birds
+    </button>
+
+    <div id="loading" style="display:none;" class="mt-2">
+      <p>Searching...</p>
+    </div>
+
+<h4 id="possibleBirdsHeader" style="margin-top: 20px; display:none;">
+  List of possible birds — use <strong>CTRL + F</strong> to find a match:
+</h4>
+
+<ul id="birdResults" class="bird-results-list" style="margin-top:10px; padding-left:18px;"></ul>
 
   </div>
 </div>
 
+
+
+<!-- JS -->
 <script src="/js/logBird.js"></script>
+
+<script>
+  // Custom modal JS to replace bootstrap.Modal
+  document.getElementById("identifyBtn").addEventListener("click", () => {
+    document.getElementById("identifyModal").style.display = "flex";
+  });
+
+  document.getElementById("closeModal").addEventListener("click", () => {
+    document.getElementById("identifyModal").style.display = "none";
+  });
+</script>
+
+
