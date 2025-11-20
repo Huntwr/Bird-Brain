@@ -14,12 +14,15 @@ CREATE TABLE users (
 
 CREATE TABLE IF NOT EXISTS bird_logs (
   id SERIAL PRIMARY KEY,
-  user_id INT REFERENCES users(id),
-  species VARCHAR(100),
-  location VARCHAR(255),
-  sighting_date TIMESTAMP,
-  notes VARCHAR(500),
-  sighting_date_at TIMESTAMP DEFAULT NOW()
+    user_id INTEGER REFERENCES users(id),
+    bird VARCHAR(255) NOT NULL,
+    location VARCHAR(255),
+    time TIMESTAMP,
+    description TEXT,
+    latitude FLOAT,
+    longitude FLOAT,
+    photo VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Friends/Friendship table to handle friend relationships
