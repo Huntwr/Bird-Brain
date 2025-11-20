@@ -1,13 +1,16 @@
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  profile_picture VARCHAR(255),
-  bio TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
+DROP TABLE IF EXISTS bird_sightings;
+DROP TABLE IF EXISTS users;
 
+-- USERS TABLE
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    profile_picture VARCHAR(255),
+    bio TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
 
 CREATE TABLE IF NOT EXISTS bird_logs (
   id SERIAL PRIMARY KEY,

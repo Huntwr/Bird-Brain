@@ -4,23 +4,37 @@ const path = require("path");
 const session = require("express-session");
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 require("dotenv").config();
+
 
 const multer = require("multer");
 
-// Multer storage for profile pictures
+// Multer storage for BOTH profile pics and bird photos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, "public/uploads"));
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const filename = `profile_${req.session.user.id}${ext}`;
-    cb(null, filename);
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9) + ext;
+    cb(null, uniqueName);
   }
 });
 
 const upload = multer({ storage: storage });
+
+
+
+// support fetch for Node < 18
+const fetch = global.fetch || ((...args) =>
+  import("node-fetch").then(({ default: f }) => f(...args))
+);
+
+// eBird API Key
+const EBIRD_API_KEY = process.env.EBIRD_API_KEY;
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,7 +64,7 @@ app.set("views", path.join(__dirname, "views"));
 
 // Middleware
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -74,6 +88,133 @@ function isAuthenticated(req, res, next) {
 // Redirect root to login
 app.get("/", (req, res) => {
   res.redirect("/login");
+});
+// ======================
+// eBird Species List API
+// ======================
+app.get("/api/birds/species", async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      {
+        headers: { "X-eBirdApiToken": EBIRD_API_KEY }
+      }
+    );
+
+    const data = await response.json();
+    res.json(data);
+
+  } catch (err) {
+    console.error("Species list error:", err);
+    res.status(500).json({ error: "Failed to fetch species list" });
+  }
+});
+
+
+// ======================
+// Geocode (text → lat/lng)
+// ======================
+app.get("/api/geocode", async (req, res) => {
+  const text = req.query.text;
+  if (!text) return res.json({});
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data || data.length === 0) {
+      return res.json({});
+    }
+
+    res.json({
+      lat: data[0].lat,
+      lng: data[0].lon
+    });
+
+  } catch (err) {
+    console.error("Geocode failed:", err);
+    res.json({});
+  }
+});
+// ======================
+// Log Bird POST route
+// ======================
+app.post("/log-bird", upload.single("photo"), async (req, res) => {
+  try {
+    const { bird, location, time, description, latitude, longitude } = req.body;
+    const userId = req.session.user.id;
+
+    // 🔥 Photo is REQUIRED
+    if (!req.file) {
+      return res.status(400).send("A bird photo is required.");
+    }
+
+    const photoPath = `/uploads/${req.file.filename}`;
+
+    // 🔥 Convert empty strings → null for optional fields
+    const safeLocation = location && location.trim() !== "" ? location : null;
+    const safeTime = time && time.trim() !== "" ? time : null;
+    const safeDescription = description && description.trim() !== "" ? description : null;
+
+    // 🔥 lat/lng must be numbers or null
+    const safeLat = latitude && latitude.trim() !== "" ? parseFloat(latitude) : null;
+    const safeLng = longitude && longitude.trim() !== "" ? parseFloat(longitude) : null;
+
+    await pool.query(
+      `INSERT INTO bird_sightings 
+        (user_id, bird, location, time, description, latitude, longitude, photo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        userId,
+        bird,
+        safeLocation,
+        safeTime,
+        safeDescription,
+        safeLat,
+        safeLng,
+        photoPath
+      ]
+    );
+
+    res.redirect("/profile");
+
+  } catch (err) {
+    console.error("Error logging bird:", err);
+    res.status(500).send("Error logging bird.");
+  }
+});
+
+
+
+app.post("/api/ai-identify-bird", isAuthenticated, async (req, res) => {
+  try {
+    const { color, size, beak, location } = req.body;
+
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+You are an expert ornithologist. Based ONLY on the following inputs:
+
+Color: ${color || "unknown"}
+Size: ${size || "unknown"}
+Beak Type: ${beak || "unknown"}
+Location (optional): ${location || "unknown"}
+
+Return A 10-15 of likely bird species found in North America that matches these traits, and that it is a bird found from eBird by the Cornell Lab of Ornithology API.
+Return ONLY the bird species common name—no explanation, each bird seperated by a ',', no extra text.
+Example output: "American Robin, Eagle, Cardinal"
+    `;
+
+    const result = await model.generateContent(prompt);
+    const name = result.response.text().trim();
+
+    res.json({ bird: name });
+
+  } catch (err) {
+    console.error("Gemini bird identify error:", err);
+    res.status(500).json({ error: "AI identification failed" });
+  }
 });
 
 // Login & Signup pages
@@ -138,27 +279,80 @@ app.get("/logout", (req, res) => {
   res.redirect("/login");
 });
 
-// Protected pages
-app.get("/home", isAuthenticated, (req, res) => {
-  res.render("home", { title: "Home" });
-});
+// TEMPORARY FRIEND POSTS (remove after friend system works)
+const fakeFriendPosts = [
+  {
+    user: "Fake Friend 1",
+    species: "Northern Cardinal",
+    location: "Denver, CO",
+    sighting_date: "2025-01-10",
+    notes: "Saw it near the river.",
+    photo: "/images/demo1.jpg"
+  },
+  {
+    user: "Fake Friend 2",
+    species: "Blue Jay",
+    location: "Boulder, CO",
+    sighting_date: "2025-01-12",
+    notes: "Very loud!",
+    photo: "/images/demo2.jpg"
+  },
+  {
+    user: "Fake Friend 3",
+    species: "Red-Tailed Hawk",
+    location: "Golden, CO",
+    sighting_date: "2025-01-14",
+    notes: "Huge wingspan.",
+    photo: "/images/demo3.jpg"
+  }
+];
 
+// Protected pages
+app.get("/home", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+
+    // Fetch your own posts - map NEW column names to OLD template expectations
+    const logsResult = await pool.query(
+      `SELECT 
+        id,
+        bird as species,
+        location,
+        to_char(time, 'Mon DD, YYYY HH12:MI AM') as sighting_date,
+        description as notes,
+        photo,
+        created_at
+      FROM bird_sightings 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC`,
+      [userId]
+    );
+    
+    const logs = logsResult.rows.map(row => ({
+      id: row.id,
+      species: row.species,
+      location: row.location || "Unknown location",
+      sighting_date: row.sighting_date || new Date(row.created_at).toLocaleString(),
+      notes: row.notes || "",
+      photo: row.photo || "/images/default_bird.png"
+    }));
+
+    // TEMP: use fake friend posts until friend system is ready
+    const friendLogs = fakeFriendPosts;
+
+    // Render template with both
+    res.render("home", { title: "Home", logs, friendLogs });
+  } catch (err) {
+    console.error("Error loading home feed:", err);
+    res.status(500).send("Error loading home feed");
+  }
+});
 app.get("/log-bird", isAuthenticated, (req, res) => {
   res.render("log-bird", { title: "Log Bird" });
 });
 
-app.post("/log-bird", isAuthenticated, async (req, res) => {
-  const { species, location, date, notes } = req.body;
-  try {
-    await pool.query(
-    "INSERT INTO bird_logs (user_id, species, location, sighting_date, notes) VALUES ($1, $2, $3, $4, $5)",
-      [req.session.user.id, species, location, date, notes]
-    );
-    res.redirect("/home");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(err.message);
-  }
+app.get("/map", isAuthenticated, (req, res) => {
+  res.render("map", { title: "Map" });
 });
 
 app.get("/comments", isAuthenticated, (req, res) => {
@@ -173,31 +367,43 @@ app.get("/friends", isAuthenticated, (req, res) => {
 });
 
 app.get("/profile", isAuthenticated, async (req, res) => {
-  const user = req.session.user;
+  try {
+    const user = req.session.user;
 
-  // Fix missing or empty profile picture
-  if (!user.profile_picture) {
-    user.profile_picture = "/images/default_pfp.png";
-  }
-
-  // Format join date
-  let formattedDate = "";
-  if (user.created_at) {
-    const date = new Date(user.created_at);
-    formattedDate = date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-
-  res.render("profile", {
-    title: "Profile",
-    user: {
-      ...user,
-      formatted_date: formattedDate
+    // Default profile picture if none stored
+    if (!user.profile_picture) {
+      user.profile_picture = "/images/default_pfp.png";
     }
-  });
+
+    // Format created_at nicely
+    let formattedDate = "";
+    if (user.created_at) {
+      const date = new Date(user.created_at);
+      formattedDate = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // 🔥 Fetch posts by this user
+    const postsResult = await pool.query(
+      "SELECT * FROM bird_sightings WHERE user_id = $1 ORDER BY created_at DESC",
+      [user.id]
+    );
+
+    const posts = postsResult.rows;
+
+    res.render("profile", {
+      title: "Profile",
+      user: { ...user, formatted_date: formattedDate },
+      posts
+    });
+
+  } catch (err) {
+    console.error("Error loading profile:", err);
+    res.status(500).send("Error loading profile");
+  }
 });
 
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
@@ -207,18 +413,15 @@ app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), a
 
     let profilePicPath = req.session.user.profile_picture;
 
-    // If user uploaded a new picture
     if (req.file) {
       profilePicPath = `/uploads/${req.file.filename}`;
     }
 
-    // Update database
     await pool.query(
       "UPDATE users SET profile_picture = $1, bio = $2 WHERE id = $3",
       [profilePicPath, bio, userId]
     );
 
-    // Update session
     req.session.user.profile_picture = profilePicPath;
     req.session.user.bio = bio;
 
@@ -258,7 +461,6 @@ app.get("/api/users/check/:username", async (req, res) => {
   try {
     const username = req.params.username.toLowerCase();
     
-    // Query the database to check if username exists
     const result = await pool.query(
       "SELECT id, username FROM users WHERE LOWER(username) = $1",
       [username]
@@ -271,7 +473,6 @@ app.get("/api/users/check/:username", async (req, res) => {
       });
     }
 
-    // Username exists, return basic user info (no sensitive data)
     res.json({
       exists: true,
       user: {
@@ -293,7 +494,7 @@ app.get("/api/users/check-email/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase();
     
-    // Query the database to check if email exists
+
     const result = await pool.query(
       "SELECT id, name, email FROM users WHERE LOWER(email) = $1",
       [email]
@@ -306,7 +507,6 @@ app.get("/api/users/check-email/:email", async (req, res) => {
       });
     }
 
-    // Email exists, return basic user info (no sensitive data)
     res.json({
       exists: true,
       user: {
@@ -325,13 +525,10 @@ app.get("/api/users/check-email/:email", async (req, res) => {
 });
 
 // Friend Request API endpoints
-
-// Send a friend request
 app.post("/api/friends/request", isAuthenticated, async (req, res) => {
   try {
     const { recipientEmail } = req.body;
     
-    // Validate input
     if (!recipientEmail) {
       return res.status(400).json({ 
         success: false, 
@@ -341,7 +538,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     
     const senderId = req.session.user.id;
     
-    // First, find the recipient by email
     const recipientResult = await pool.query("SELECT id, name, email FROM users WHERE LOWER(email) = $1", [recipientEmail.toLowerCase()]);
     
     if (recipientResult.rows.length === 0) {
@@ -353,7 +549,6 @@ app.post("/api/friends/request", isAuthenticated, async (req, res) => {
     
     const recipient = recipientResult.rows[0];
     
-    // Don't allow sending request to yourself
     if (recipient.id === senderId) {
       return res.status(400).json({
         success: false,
@@ -582,11 +777,28 @@ app.delete("/api/friends/:friendId", isAuthenticated, async (req, res) => {
   }
 });
 
-// Mapbox API Key route
-app.get("/config", (req, res) => {
-  res.json({
-    mapboxKey: process.env.MAPBOX_API_KEY
-  });
+
+// Always return the full species list (survey filters still work)
+app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
+  try {
+    const response = await fetch(
+      "https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=json",
+      { headers: { "X-eBirdApiToken": EBIRD_API_KEY } }
+    );
+
+    const species = await response.json();
+
+    const cleaned = species.map(s => ({
+      comName: s.comName,
+      sciName: s.sciName || "",
+    }));
+
+    res.json(cleaned);
+
+  } catch (err) {
+    console.error("Bird API error:", err);
+    res.status(500).json({ error: "Failed to fetch species" });
+  }
 });
 
 // Get bird posts for a specific user
@@ -636,3 +848,5 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
+
+// merge main 

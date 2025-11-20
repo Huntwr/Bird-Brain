@@ -85,7 +85,7 @@ textarea {
   resize: vertical;
 }
 
-/* Buttons */
+/* Buttons - DEFAULT (for login/signup forms) */
 button {
   width: 100%;
   padding: 0.8rem;
@@ -235,12 +235,12 @@ button:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #FFFAF5; /* updated background */
-  color: #4b3b2a; /* text color same as before */
+  background-color: #FFFAF5;
+  color: #4b3b2a;
   width: 95%;
   margin: 1rem auto;
   padding: 0.9rem 2rem;
-  border-radius: 25px; /* extra round */
+  border-radius: 25px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.1);
   position: sticky;
   top: 0;
@@ -256,7 +256,7 @@ button:hover {
 .nav-logo {
   height: 45px;
   margin-right: 1.5rem;
-  pointer-events: none; /* not clickable */
+  pointer-events: none;
   border-radius: 12px;
 }
 
@@ -269,8 +269,14 @@ button:hover {
   transition: color 0.3s ease;
 }
 
+.nav-links {
+  display: flex;
+  gap: 2.2rem;
+  align-items: center;
+}
+
 .nav-link:hover {
-  color: #b28555; /* soft brown accent */
+  color: #b28555;
 }
 
 /* === Dropdown === */
@@ -289,6 +295,7 @@ button:hover {
   transition: color 0.3s ease;
   border-radius: 10px;
   padding: 8px 14px;
+  width: auto; /* Override default button width */
 }
 
 .dropbtn:hover {
@@ -301,7 +308,7 @@ button:hover {
   display: none;
   position: absolute;
   right: 0;
-  background-color: #FFFAF5; /* updated background */
+  background-color: #FFFAF5;
   min-width: 180px;
   border-radius: 18px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.12);
@@ -334,13 +341,16 @@ button:hover {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-/* === Fullscreen Map === */
+
+/* === Map Styling === */
 #map {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 100vw;
+  position: relative;
+  width: 90%;
+  height: 80vh;
+  margin: 2rem auto;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(78, 52, 46, 0.25);
   z-index: 0;
 }
 
@@ -380,35 +390,406 @@ button:hover {
   color: #5d4037;
   cursor: pointer;
   transition: color 0.2s ease;
+  width: auto; /* Override default button width */
 }
 
 .close-btn:hover {
   color: #a1887f;
 }
-/* === Map Styling (with background margin) === */
-#map {
-  position: relative;
-  width: 90%;
-  height: 80vh;
-  margin: 2rem auto;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 8px 20px rgba(78, 52, 46, 0.25);
-  z-index: 0;
-}
 
-/* Profile Picture Wrapper (auto-resizes to image) */
+/* Profile Picture Wrapper */
 .pfp-wrapper {
   display: inline-block;
-  max-width: 250px;       /* caps huge images */
+  max-width: 250px;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-/* Image itself */
 .pfp-image {
   display: block;
-  width: 100%;            /* scales down nicely */
-  height: auto;           /* preserves aspect ratio */
+  width: 100%;
+  height: auto;
+}
+
+/* ==== Home Feed ==== */
+.feed-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  margin-top: 30px;
+}
+
+.section-title {
+  color: #5d4037;
+  margin: 20px 0 10px;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+/* ===== CRITICAL HOME PAGE STYLES ===== */
+.feed-wrapper {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 16px;
+}
+
+.post-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.toggle-btn {
+  padding: 8px 18px;
+  border-radius: 24px;
+  border: 2px solid #8d6e63;
+  background: #fffaf5;
+  color: #5d4037;
+  font-weight: 600;
+  cursor: pointer;
+  width: auto; /* Override default button width */
+}
+
+.toggle-btn.active {
+  background: #8d6e63;
+  color: white;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+.bird-card {
+  background: #fffaf5;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(78,52,46,0.14);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bird-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 26px rgba(78, 52, 46, 0.26);
+}
+
+.bird-photo {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  display: block;
+}
+
+.bird-card-body {
+  padding: 14px 16px;
+}
+
+.bird-card h3 {
+  margin: 0 0 6px;
+  color: #4e342e;
+}
+
+.bird-card .location {
+  color: #6d4c41;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.bird-card .date {
+  color: #8d6e63;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.bird-card .notes {
+  color: #4e342e;
+  font-size: 0.95rem;
+}
+
+.friend-card {
+  border-left: 5px solid #a1887f;
+}
+
+.friend-card .friend-name {
+  color: #8d6e63;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.empty-note {
+  padding: 18px;
+  background: #fff8f0;
+  border-radius: 12px;
+  text-align: center;
+  color: #6d4c41;
+}
+
+.empty-note a {
+  color: #8d6e63;
+  text-decoration: underline;
+}
+
+/* ==== LOG BIRD FORM STYLES ==== */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.py-5 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.h3 {
+  font-size: 1.75rem;
+}
+
+.mb-3 {
+  margin-bottom: 1rem;
+}
+
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #4e342e;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid #d7ccc8;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: #fff;
+}
+
+.form-control:focus {
+  border-color: #a1887f;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(161, 136, 127, 0.3);
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid #d7ccc8;
+  border-radius: 10px;
+  font-size: 1rem;
+  background-color: #fff;
+}
+
+.text-danger {
+  color: #dc3545;
+}
+
+.text-secondary {
+  color: #6c757d;
+}
+
+/* Button overrides for specific classes */
+.btn {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: inline-block;
+  width: auto; /* Override default button width */
+}
+
+.btn-primary {
+  background: #8d6e63;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #6d4c41;
+}
+
+.btn-outline-secondary {
+  background: transparent;
+  color: #6d4c41;
+  border: 2px solid #d7ccc8;
+}
+
+.btn-outline-secondary:hover {
+  background: #f5f5f5;
+}
+
+.btn-outline-info {
+  background: transparent;
+  color: #0dcaf0;
+  border: 2px solid #0dcaf0;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+/* Grid layout */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -0.75rem;
+}
+
+.col-lg-6 {
+  flex: 0 0 50%;
+  max-width: 50%;
+  padding: 0 0.75rem;
+}
+
+.g-4 > * {
+  padding: 0.75rem;
+}
+
+/* Upload zone */
+.upload-drop {
+  background: #fffaf5;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px dashed #d7ccc8;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-input {
+  width: 100%;
+  height: 100%;
+}
+
+.upload-empty {
+  text-align: center;
+  padding: 26px;
+  color: #6d4c41;
+}
+
+/* Invalid feedback */
+.invalid-feedback {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Border utilities */
+.border {
+  border: 1px solid #d7ccc8 !important;
+}
+
+.rounded {
+  border-radius: 10px !important;
+}
+
+.bg-light {
+  background-color: #f8f9fa !important;
+}
+
+.p-3 {
+  padding: 1rem !important;
+}
+
+.mt-1 {
+  margin-top: 0.25rem !important;
+}
+
+.mt-2 {
+  margin-top: 0.5rem !important;
+}
+
+.mt-3 {
+  margin-top: 1rem !important;
+}
+
+.fw-bold {
+  font-weight: 700 !important;
+}
+
+.text-primary {
+  color: #8d6e63 !important;
+}
+
+/* Profile page styles */
+.posts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.post-card {
+  display: flex;
+  gap: 20px;
+  background: #fffaf5;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.post-photo {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.post-info h3 {
+  margin: 0;
+}
+
+.small {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.no-posts {
+  font-style: italic;
+  color: #6d4c41;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .col-lg-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  
+  .nav-links {
+    gap: 1rem;
+  }
+  
+  .navbar {
+    padding: 0.7rem 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .post-card {
+    flex-direction: column;
+  }
+  
+  .post-photo {
+    width: 100%;
+    height: 250px;
+  }
 }
