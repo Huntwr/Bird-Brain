@@ -1,61 +1,111 @@
-<div id="map"></div>
 
-<!-- Welcome Overlay -->
-<div id="welcome-card" class="welcome-overlay">
-  <button id="close-welcome" class="close-btn">×</button>
-  <h1>Welcome to Bird Brain</h1>
-  <p class="subtitle">Track and share your bird sightings with friends!</p>
+<div class="feed-wrapper" style="max-width:1100px; margin: 2rem auto; padding: 0 16px;">
+
+  <!-- Toggle -->
+  <div class="post-toggle" style="display:flex; justify-content:center; gap:12px; margin-bottom:20px;">
+    <button id="yoursBtn" class="toggle-btn active">Yours</button>
+    <button id="friendsBtn" class="toggle-btn">Friends</button>
+  </div>
+
+  <!-- YOURS -->
+  <div id="yoursSection">
+    <h2 class="section-title">Your Sightings</h2>
+    <div class="card-grid">
+      {{#if logs.length}}
+        {{#each logs}}
+          <div class="bird-card">
+            <img src="{{this.photo}}" class="bird-photo" alt="{{this.species}}" onerror="this.src='/images/default_bird.png'"/>
+            <div class="bird-card-body">
+              <h3>{{this.species}}</h3>
+              <p class="location">{{this.location}}</p>
+              <p class="date">{{this.sighting_date}}</p>
+              <p class="notes">{{this.notes}}</p>
+            </div>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="empty-note">You haven't logged any sightings yet. <a href="/log-bird">Log one now</a>.</div>
+      {{/if}}
+    </div>
+  </div>
+
+  <!-- FRIENDS -->
+  <div id="friendsSection" style="display:none;">
+    <h2 class="section-title">Friend Sightings</h2>
+    <div class="card-grid">
+      {{#each friendLogs}}
+        <div class="bird-card friend-card">
+          <img src="{{this.photo}}" class="bird-photo" alt="{{this.species}}" onerror="this.src='/images/default_bird.png'"/>
+          <div class="bird-card-body">
+            <p class="friend-name">{{this.user}}</p>
+            <h3>{{this.species}}</h3>
+            <p class="location">{{this.location}}</p>
+            <p class="date">{{this.sighting_date}}</p>
+            <p class="notes">{{this.notes}}</p>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  </div>
+
 </div>
 
+<style>
+/* reuse your theme colors */
+.section-title { color: #5d4037; margin: 12px 0; font-weight:600; }
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 22px;
+}
+.bird-card {
+  background: #fffaf5;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(78,52,46,0.14);
+  display: flex;
+  flex-direction: column;
+}
+.bird-photo {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  display: block;
+}
+.bird-card-body { padding: 14px 16px; }
+.bird-card h3 { margin: 0 0 6px; color:#4e342e; }
+.friend-card { border-left: 5px solid #a1887f; }
+.friend-name { color:#8d6e63; font-size:0.9rem; margin-bottom:6px; }
+
+/* Toggle buttons */
+.toggle-btn {
+  padding: 8px 18px;
+  border-radius: 24px;
+  border: 2px solid #8d6e63;
+  background: #fffaf5;
+  color: #5d4037;
+  font-weight:600;
+  cursor:pointer;
+}
+.toggle-btn.active { background:#8d6e63; color:white; }
+
+/* empty note */
+.empty-note { padding: 18px; background:#fff8f0; border-radius:12px; text-align:center; color:#6d4c41; }
+</style>
+
 <script>
-  async function initMap() {
-    try {
-      const res = await fetch('/config');
-      const data = await res.json();
-      
-      console.log('Mapbox API Key received:', data.mapboxKey ? 'Yes' : 'No');
-      console.log('API Key length:', data.mapboxKey?.length);
+  const yoursBtn = document.getElementById('yoursBtn');
+  const friendsBtn = document.getElementById('friendsBtn');
+  const yoursSection = document.getElementById('yoursSection');
+  const friendsSection = document.getElementById('friendsSection');
 
-      mapboxgl.accessToken = data.mapboxKey;
-      
-      console.log('Creating map...');
-      const map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/outdoors-v12',
-        center: [-105.2705, 40.0150], // Boulder, CO
-        zoom: 10
-      });
-      
-      console.log('Map created successfully');
+  yoursBtn.addEventListener('click', () => {
+    yoursBtn.classList.add('active'); friendsBtn.classList.remove('active');
+    yoursSection.style.display = ''; friendsSection.style.display = 'none';
+  });
 
-      map.addControl(new mapboxgl.NavigationControl());
-
-      new mapboxgl.Marker()
-        .setLngLat([-105.2705, 40.0150])
-        .setPopup(new mapboxgl.Popup().setText('CU Boulder - Bird Brain HQ'))
-        .addTo(map);
-        
-      map.on('load', () => {
-        console.log('Map loaded successfully');
-      });
-      
-      map.on('error', (e) => {
-        console.error('Map error:', e);
-      });
-    } catch (err) {
-      console.error('Error loading map:', err);
-    }
-  }
-
-  initMap();
-
-  // Close Welcome overlay
-  document.addEventListener("DOMContentLoaded", () => {
-    const closeBtn = document.getElementById("close-welcome");
-    const welcomeCard = document.getElementById("welcome-card");
-
-    closeBtn.addEventListener("click", () => {
-      welcomeCard.style.display = "none";
-    });
+  friendsBtn.addEventListener('click', () => {
+    friendsBtn.classList.add('active'); yoursBtn.classList.remove('active');
+    friendsSection.style.display = ''; yoursSection.style.display = 'none';
   });
 </script>
