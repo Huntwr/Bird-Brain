@@ -12,7 +12,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS bird_logs (
+CREATE TABLE IF NOT EXISTS bird_sightings (
   id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     bird VARCHAR(255) NOT NULL,
