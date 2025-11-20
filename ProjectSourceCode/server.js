@@ -84,7 +84,12 @@ function isAuthenticated(req, res, next) {
 }
 
 // Routes
-
+// Mapbox API Key route
+app.get("/config", (req, res) => {
+  res.json({
+    mapboxKey: process.env.MAPBOX_API_KEY
+  });
+});
 // Redirect root to login
 app.get("/", (req, res) => {
   res.redirect("/login");
@@ -145,19 +150,19 @@ app.post("/log-bird", upload.single("photo"), async (req, res) => {
     const { bird, location, time, description, latitude, longitude } = req.body;
     const userId = req.session.user.id;
 
-    //  Photo is REQUIRED
+    // 🔥 Photo is REQUIRED
     if (!req.file) {
       return res.status(400).send("A bird photo is required.");
     }
 
     const photoPath = `/uploads/${req.file.filename}`;
 
-    // Convert empty strings → null for optional fields
+    // 🔥 Convert empty strings → null for optional fields
     const safeLocation = location && location.trim() !== "" ? location : null;
     const safeTime = time && time.trim() !== "" ? time : null;
     const safeDescription = description && description.trim() !== "" ? description : null;
 
-    // lat/lng must be numbers or null
+    // 🔥 lat/lng must be numbers or null
     const safeLat = latitude && latitude.trim() !== "" ? parseFloat(latitude) : null;
     const safeLng = longitude && longitude.trim() !== "" ? parseFloat(longitude) : null;
 
