@@ -273,30 +273,45 @@ app.get("/friends", isAuthenticated, (req, res) => {
 });
 
 app.get("/profile", isAuthenticated, async (req, res) => {
-  const user = req.session.user;
+  try {
+    const user = req.session.user;
 
-  if (!user.profile_picture) {
-    user.profile_picture = "/images/default_pfp.png";
-  }
-
-  let formattedDate = "";
-  if (user.created_at) {
-    const date = new Date(user.created_at);
-    formattedDate = date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
-
-  res.render("profile", {
-    title: "Profile",
-    user: {
-      ...user,
-      formatted_date: formattedDate
+    // Default profile picture if none stored
+    if (!user.profile_picture) {
+      user.profile_picture = "/images/default_pfp.png";
     }
-  });
+
+    // Format created_at nicely
+    let formattedDate = "";
+    if (user.created_at) {
+      const date = new Date(user.created_at);
+      formattedDate = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    // 🔥 Fetch posts by this user
+    const postsResult = await pool.query(
+      "SELECT * FROM bird_sightings WHERE user_id = $1 ORDER BY created_at DESC",
+      [user.id]
+    );
+
+    const posts = postsResult.rows;
+
+    res.render("profile", {
+      title: "Profile",
+      user: { ...user, formatted_date: formattedDate },
+      posts
+    });
+
+  } catch (err) {
+    console.error("Error loading profile:", err);
+    res.status(500).send("Error loading profile");
+  }
 });
+
 
 app.post("/profile/update", isAuthenticated, upload.single("profile_picture"), async (req, res) => {
   try {

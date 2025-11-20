@@ -50,25 +50,26 @@
     });
   </script>
 
-  <main class="posts">
-      <h2 class="section-title mb-3">User Posts</h2>
+<h2 class="section-title">My Posts</h2>
 
-      <!-- Placeholders remain untouched -->
-      <div class="comment p-3 rounded-3 mb-3">
-          <div class="pfp"></div>
-          <div class="comment-content">
-              <span class="comment-username">{{user.name}} wrote:</span>
-              <p class="comment-text">This is a placeholder post.</p>
-          </div>
-      </div>
+{{#if posts.length}}
+  <div class="posts-container">
+    {{#each posts}}
+      <div class="post-card">
+        <img class="post-photo" src="{{this.photo}}" alt="Bird Photo">
 
-      <div class="comment p-3 rounded-3 mb-3">
-          <div class="pfp"></div>
-          <div class="comment-content">
-              <span class="comment-username">{{user.name}} wrote:</span>
-              <p class="comment-text">Another placeholder post.</p>
-          </div>
+        <div class="post-info">
+          <h3>{{this.bird}}</h3>
+          <p>{{this.description}}</p>
+          <p class="small">Location: {{this.location}}</p>
+          <p class="small">Posted: {{this.created_at}}</p>
+        </div>
       </div>
-  </main>
+    {{/each}}
+  </div>
+{{else}}
+  <p class="no-posts">You haven't logged any birds yet.</p>
+{{/if}}
+
 
 </div>
