@@ -1,0 +1,27 @@
+Release notes week 3 for Bird Brain
+
+Added the full API integration for bird identification and connected it to the UI.
+
+Implemented the survey logic so users can filter birds by size, beak, color, and location.
+
+The log bird feature now works correctly and stores entries without errors.
+
+Expanded and updated the database to hold all survey + bird log data reliably.
+
+Map/location functionality is now fully worked out and displays user location properly.
+
+Added the initial Friends system where users can now add friends and view them.
+
+Cleaned up backend routes and made API responses more consistent.
+
+Improved overall UI flow for the Identify then Results then Log Bird process.
+
+Added better error handling and feedback messages so the app feels smoother to use.
+
+Polished styling on multiple pages to make layouts more consistent.
+
+Updated navigation links so pages are easier to move between.
+
+Improved loading indicators for API results so users see when things are processing.
+
+Added more structure to the project files for cleaner organization going forward.

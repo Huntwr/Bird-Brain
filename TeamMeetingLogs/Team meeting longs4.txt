@@ -1,0 +1,12 @@
+Team meeting logs: 
+Meeting 4: 11/20/25
+Min count: 11:10 AM to 11:23 AM
+Week 4 Notes: 
+
+- Backend is in good shape overall, routes work, login/registration stable, database connections solid.
+- Mostly focused on styling and polishing this week.
+- Need to clean up spacing, alignment, padding, and inconsistent UI elements across pages.
+- Add more polish to buttons, forms, text sizes, and general page flow so everything feels smooth and intentional.
+- Presentation prep: keep the demo simple and clear.
+- Make sure its rendered online and works 
+- Schedlue a group call over break and a run through week of presentation.
