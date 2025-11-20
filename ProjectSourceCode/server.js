@@ -279,13 +279,80 @@ app.get("/logout", (req, res) => {
   res.redirect("/login");
 });
 
-// Protected pages
-app.get("/home", isAuthenticated, (req, res) => {
-  res.render("home", { title: "Home" });
-});
+// TEMPORARY FRIEND POSTS (remove after friend system works)
+const fakeFriendPosts = [
+  {
+    user: "Fake Friend 1",
+    species: "Northern Cardinal",
+    location: "Denver, CO",
+    sighting_date: "2025-01-10",
+    notes: "Saw it near the river.",
+    photo: "/images/demo1.jpg"
+  },
+  {
+    user: "Fake Friend 2",
+    species: "Blue Jay",
+    location: "Boulder, CO",
+    sighting_date: "2025-01-12",
+    notes: "Very loud!",
+    photo: "/images/demo2.jpg"
+  },
+  {
+    user: "Fake Friend 3",
+    species: "Red-Tailed Hawk",
+    location: "Golden, CO",
+    sighting_date: "2025-01-14",
+    notes: "Huge wingspan.",
+    photo: "/images/demo3.jpg"
+  }
+];
 
+// Protected pages
+app.get("/home", isAuthenticated, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+
+    // Fetch your own posts - map NEW column names to OLD template expectations
+    const logsResult = await pool.query(
+      `SELECT 
+        id,
+        bird as species,
+        location,
+        to_char(time, 'Mon DD, YYYY HH12:MI AM') as sighting_date,
+        description as notes,
+        photo,
+        created_at
+      FROM bird_sightings 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC`,
+      [userId]
+    );
+    
+    const logs = logsResult.rows.map(row => ({
+      id: row.id,
+      species: row.species,
+      location: row.location || "Unknown location",
+      sighting_date: row.sighting_date || new Date(row.created_at).toLocaleString(),
+      notes: row.notes || "",
+      photo: row.photo || "/images/default_bird.png"
+    }));
+
+    // TEMP: use fake friend posts until friend system is ready
+    const friendLogs = fakeFriendPosts;
+
+    // Render template with both
+    res.render("home", { title: "Home", logs, friendLogs });
+  } catch (err) {
+    console.error("Error loading home feed:", err);
+    res.status(500).send("Error loading home feed");
+  }
+});
 app.get("/log-bird", isAuthenticated, (req, res) => {
   res.render("log-bird", { title: "Log Bird" });
+});
+
+app.get("/map", isAuthenticated, (req, res) => {
+  res.render("map", { title: "Map" });
 });
 
 app.get("/comments", isAuthenticated, (req, res) => {
