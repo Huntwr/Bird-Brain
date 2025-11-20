@@ -114,29 +114,72 @@ app.get("/api/birds/species", async (req, res) => {
 // ======================
 // Geocode (text → lat/lng)
 // ======================
+const MAPBOX_TOKEN = process.env.MAPBOX_API_KEY;
+
 app.get("/api/geocode", async (req, res) => {
   const text = req.query.text;
-  if (!text) return res.json({});
+  if (!text) {
+    return res.json({});
+  }
 
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (!data || data.length === 0) {
+    if (!MAPBOX_TOKEN) {
+      console.error("MAPBOX_ACCESS_TOKEN is not set");
       return res.json({});
     }
 
-    res.json({
-      lat: data[0].lat,
-      lng: data[0].lon
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+      text
+    )}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+      },
     });
 
+    const contentType = response.headers.get("content-type") || "";
+
+    // Read the body once as text so we can handle both JSON and HTML safely
+    const bodyText = await response.text();
+
+    // If Mapbox (or some proxy) sends HTML, don't try to JSON.parse it
+    if (!contentType.includes("application/json")) {
+      console.error(
+        "Mapbox geocode response is not JSON. Body preview:\n",
+        bodyText.slice(0, 500)
+      );
+      return res.json({});
+    }
+
+    let data;
+    try {
+      data = JSON.parse(bodyText);
+    } catch (parseErr) {
+      console.error(
+        "Failed to parse Mapbox JSON:",
+        parseErr,
+        "\nBody preview:\n",
+        bodyText.slice(0, 500)
+      );
+      return res.json({});
+    }
+
+    if (!data.features || data.features.length === 0) {
+      return res.json({});
+    }
+
+    const first = data.features[0];
+    // Mapbox center: [lng, lat]
+    const [lng, lat] = first.center;
+
+    return res.json({ lat, lng });
   } catch (err) {
-    console.error("Geocode failed:", err);
-    res.json({});
+    console.error("Mapbox geocode failed:", err);
+    return res.json({});
   }
 });
+
 // ======================
 // Log Bird POST route
 // ======================
