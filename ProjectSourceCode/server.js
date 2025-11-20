@@ -143,23 +143,50 @@ app.get("/api/geocode", async (req, res) => {
 app.post("/log-bird", upload.single("photo"), async (req, res) => {
   try {
     const { bird, location, time, description, latitude, longitude } = req.body;
-    const photoPath = req.file ? `/uploads/${req.file.filename}` : null;
-
     const userId = req.session.user.id;
 
+    // 🔥 Photo is REQUIRED
+    if (!req.file) {
+      return res.status(400).send("A bird photo is required.");
+    }
+
+    const photoPath = `/uploads/${req.file.filename}`;
+
+    // 🔥 Convert empty strings → null for optional fields
+    const safeLocation = location && location.trim() !== "" ? location : null;
+    const safeTime = time && time.trim() !== "" ? time : null;
+    const safeDescription = description && description.trim() !== "" ? description : null;
+
+    // 🔥 lat/lng must be numbers or null
+    const safeLat = latitude && latitude.trim() !== "" ? parseFloat(latitude) : null;
+    const safeLng = longitude && longitude.trim() !== "" ? parseFloat(longitude) : null;
+
     await pool.query(
-      `INSERT INTO bird_sightings (user_id, bird, location, time, description, latitude, longitude, photo)
+      `INSERT INTO bird_sightings 
+        (user_id, bird, location, time, description, latitude, longitude, photo)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [userId, bird, location, time, description, latitude, longitude, photoPath]
+      [
+        userId,
+        bird,
+        safeLocation,
+        safeTime,
+        safeDescription,
+        safeLat,
+        safeLng,
+        photoPath
+      ]
     );
 
-    res.redirect("/profile"); // or wherever you want to send them
+    res.redirect("/profile");
 
   } catch (err) {
     console.error("Error logging bird:", err);
     res.status(500).send("Error logging bird.");
   }
 });
+
+
+
 app.post("/api/ai-identify-bird", isAuthenticated, async (req, res) => {
   try {
     const { color, size, beak, location } = req.body;
