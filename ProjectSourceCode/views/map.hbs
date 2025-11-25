@@ -1,26 +1,203 @@
-<div id="map"></div>
+<div id="map" style="width: 100%; height: 600px;"></div>
+
+<style>
+  #map {
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(78, 52, 46, 0.2);
+    margin: 2rem auto;
+    max-width: 1200px;
+  }
+</style>
 
 <script>
+  let map;
+  let markers = [];
+
   async function initMap() {
-    const res = await fetch('/config');
-    const data = await res.json();
+    try {
+      // Get Mapbox token
+      const res = await fetch('/config');
+      const data = await res.json();
 
-    mapboxgl.accessToken = data.mapboxKey;
+      if (!data.mapboxKey) {
+        document.getElementById('map').innerHTML = '<p style="padding: 2rem; text-align: center;">Mapbox API key not configured.</p>';
+        return;
+      }
+
+      mapboxgl.accessToken = data.mapboxKey;
       
-    const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/outdoors-v12',
-      center: [-105.2705, 40.0150], 
-      zoom: 10
-    });
+      // Initialize map
+      map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/outdoors-v12',
+        center: [-105.2705, 40.0150], // Default to Boulder, CO
+        zoom: 10
+      });
 
-    map.addControl(new mapboxgl.NavigationControl());
-  
-    new mapboxgl.Marker()
+      map.addControl(new mapboxgl.NavigationControl());
+
+      // Wait for map to load, then fetch and display sightings
+      map.on('load', async () => {
+        await loadBirdSightings();
+      });
+
+    } catch (err) {
+      console.error('Error initializing map:', err);
+      document.getElementById('map').innerHTML = '<p style="padding: 2rem; text-align: center;">Error loading map. Please refresh the page.</p>';
+    }
+  }
+
+  async function loadBirdSightings() {
+    try {
+      const res = await fetch('/api/bird-sightings/map');
+      const data = await res.json();
+
+      if (!data.success || !data.sightings || data.sightings.length === 0) {
+        // No sightings, just show default marker
+        addDefaultMarker();
+        return;
+      }
+
+      const sightings = data.sightings;
+      
+      // Clear existing markers
+      markers.forEach(marker => marker.remove());
+      markers = [];
+
+      // Calculate bounds to fit all markers
+      const bounds = new mapboxgl.LngLatBounds();
+
+      // Create markers for each sighting
+      sightings.forEach(sighting => {
+        if (sighting.latitude && sighting.longitude) {
+          const lng = parseFloat(sighting.longitude);
+          const lat = parseFloat(sighting.latitude);
+
+          // Create popup content with user info, comment link, and friend request
+          const userSection = `
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #d7ccc8;">
+              <img src="${sighting.user_profile_picture || '/images/default_pfp.png'}" 
+                   alt="${sighting.user_name}" 
+                   style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
+                   onerror="this.src='/images/default_pfp.png'">
+              <div style="flex: 1;">
+                <strong style="font-size: 0.9rem; color: #4e342e;">${sighting.user_name || 'Unknown'}</strong>
+                ${!sighting.is_self ? `
+                  <div style="margin-top: 4px;">
+                    ${sighting.is_friend ? 
+                      '<span style="font-size: 0.75rem; color: #8d6e63;">✓ Friend</span>' :
+                      sighting.has_pending_request ?
+                      '<span style="font-size: 0.75rem; color: #8d6e63;">Request pending</span>' :
+                      `<button onclick="sendFriendRequest('${sighting.user_email}', ${sighting.user_id})" 
+                               style="font-size: 0.75rem; padding: 2px 8px; background: #8d6e63; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        + Add Friend
+                       </button>`
+                    }
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+          
+          const popupContent = `
+            <div style="padding: 8px; max-width: 280px;">
+              ${userSection}
+              <img src="${sighting.photo || '/images/default_bird.png'}" 
+                   alt="${sighting.bird}" 
+                   style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;"
+                   onerror="this.src='/images/default_bird.png'">
+              <h4 style="margin: 0 0 4px 0; font-size: 1rem; color: #4e342e;">${sighting.bird}</h4>
+              <p style="margin: 0 0 4px 0; font-size: 0.85rem; color: #8d6e63;">
+                <strong>Location:</strong> ${sighting.location || 'Unknown'}<br>
+                <strong>Date:</strong> ${new Date(sighting.created_at).toLocaleDateString()}
+              </p>
+              ${sighting.description ? `<p style="margin: 4px 0 8px 0; font-size: 0.8rem; color: #6d4c41;">${sighting.description.substring(0, 100)}${sighting.description.length > 100 ? '...' : ''}</p>` : ''}
+              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #d7ccc8;">
+                <a href="/comments/${sighting.id}" 
+                   style="display: inline-block; padding: 4px 12px; background: #8d6e63; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85rem;">
+                  💬 Comment
+                </a>
+              </div>
+            </div>
+          `;
+
+          // Create marker
+          const marker = new mapboxgl.Marker({
+            color: '#8d6e63'
+          })
+            .setLngLat([lng, lat])
+            .setPopup(new mapboxgl.Popup({ offset: 25 })
+              .setHTML(popupContent))
+            .addTo(map);
+
+          markers.push(marker);
+          bounds.extend([lng, lat]);
+        }
+      });
+
+      // Fit map to show all markers
+      if (markers.length > 0) {
+        if (markers.length === 1) {
+          // If only one marker, center on it with a reasonable zoom
+          map.setCenter([parseFloat(sightings[0].longitude), parseFloat(sightings[0].latitude)]);
+          map.setZoom(12);
+        } else {
+          // Fit bounds to show all markers
+          map.fitBounds(bounds, {
+            padding: { top: 50, bottom: 50, left: 50, right: 50 },
+            maxZoom: 15
+          });
+        }
+      } else {
+        // No valid markers, show default
+        addDefaultMarker();
+      }
+
+    } catch (err) {
+      console.error('Error loading bird sightings:', err);
+      addDefaultMarker();
+    }
+  }
+
+  function addDefaultMarker() {
+    // Add default marker for CU Boulder
+    const defaultMarker = new mapboxgl.Marker()
       .setLngLat([-105.2705, 40.0150])
       .setPopup(new mapboxgl.Popup().setText('CU Boulder - Bird Brain HQ'))
       .addTo(map);
+    
+    markers.push(defaultMarker);
   }
 
+  // Function to send friend request
+  async function sendFriendRequest(email, userId) {
+    try {
+      const response = await fetch('/api/friends/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ recipientEmail: email })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`Friend request sent to ${data.request.recipientName || email}!`);
+        // Reload sightings to update friend status
+        await loadBirdSightings();
+      } else {
+        alert(data.message || 'Failed to send friend request');
+      }
+    } catch (err) {
+      console.error('Error sending friend request:', err);
+      alert('Error sending friend request. Please try again.');
+    }
+  }
+  
+  // Make function globally available
+  window.sendFriendRequest = sendFriendRequest;
+
+  // Initialize map when page loads
   initMap();
 </script>

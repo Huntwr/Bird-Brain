@@ -20,6 +20,7 @@
               <p class="location">{{this.location}}</p>
               <p class="date">{{this.sighting_date}}</p>
               <p class="notes">{{this.notes}}</p>
+              <a href="/comments/{{this.id}}" class="comment-link" style="display: inline-block; margin-top: 10px; color: #8d6e63; text-decoration: none; font-weight: 500;">💬 Comment</a>
             </div>
           </div>
         {{/each}}
@@ -33,18 +34,25 @@
   <div id="friendsSection" style="display:none;">
     <h2 class="section-title">Friend Sightings</h2>
     <div class="card-grid">
-      {{#each friendLogs}}
-        <div class="bird-card friend-card">
-          <img src="{{this.photo}}" class="bird-photo" alt="{{this.species}}" onerror="this.src='/images/default_bird.png'"/>
-          <div class="bird-card-body">
-            <p class="friend-name">{{this.user}}</p>
-            <h3>{{this.species}}</h3>
-            <p class="location">{{this.location}}</p>
-            <p class="date">{{this.sighting_date}}</p>
-            <p class="notes">{{this.notes}}</p>
+      {{#if friendLogs.length}}
+        {{#each friendLogs}}
+          <div class="bird-card friend-card">
+            <img src="{{this.photo}}" class="bird-photo" alt="{{this.species}}" onerror="this.src='/images/default_bird.png'"/>
+            <div class="bird-card-body">
+              <p class="friend-name">{{this.user}}</p>
+              <h3>{{this.species}}</h3>
+              <p class="location">{{this.location}}</p>
+              <p class="date">{{this.sighting_date}}</p>
+              <p class="notes">{{this.notes}}</p>
+              {{#if this.id}}
+                <a href="/comments/{{this.id}}" class="comment-link" style="display: inline-block; margin-top: 10px; color: #8d6e63; text-decoration: none; font-weight: 500;">💬 Comment</a>
+              {{/if}}
+            </div>
           </div>
-        </div>
-      {{/each}}
+        {{/each}}
+      {{else}}
+        <div class="empty-note">No friend sightings yet. <a href="/friends">Add some friends</a> to see their bird posts here!</div>
+      {{/if}}
     </div>
   </div>
 

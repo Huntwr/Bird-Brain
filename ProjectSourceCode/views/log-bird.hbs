@@ -22,6 +22,22 @@
     min-width: 330px;
   }
 
+  /* Search bar */
+  #speciesSearch {
+    border: 1px solid #d7ccc8;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    background: #fffaf5;
+    color: #4e342e;
+    font-size: 0.95rem;
+  }
+  
+  #speciesSearch:focus {
+    outline: none;
+    border-color: #8d6e63;
+    box-shadow: 0 0 0 2px rgba(141, 110, 99, 0.2);
+  }
+
   /* Species list */
   #speciesListBox {
     border: 1px solid #d7ccc8;
@@ -39,6 +55,10 @@
   }
   #speciesList > div:hover {
     background: #f0e6df;
+  }
+  
+  .species-item {
+    user-select: none;
   }
 
   /* Selected bird box */
@@ -141,12 +161,12 @@
       <!-- LEFT SIDE -->
       <div class="logbird-col">
 
-        <label class="form-label">Choose Species (CTRL+F to search)</label>
+        <label class="form-label">Choose Species</label>
+        <input type="text" id="speciesSearch" class="form-control mb-2" placeholder="Search for a bird species..." autocomplete="off" />
         <div id="speciesListBox">
           <div id="speciesList">Loading species...</div>
         </div>
-
-        <small class="text-secondary">Tip: Use <strong>CTRL+F</strong> to search.</small>
+        <small class="text-secondary">Type to search, then click a bird to select it.</small>
 
         <!-- Selected Bird -->
         <div class="selected-box">
@@ -162,8 +182,12 @@
 
         <!-- Location -->
         <div class="input-group mt-3">
-          <label class="form-label">Location</label>
-          <input type="text" id="location" name="location" class="form-control" placeholder="e.g., Chautauqua Park, Boulder, CO" />
+          <label class="form-label">Location <small class="text-muted">(city, address, or place name)</small></label>
+          <div class="d-flex gap-2">
+            <input type="text" id="location" name="location" class="form-control" placeholder="e.g., Boulder, CO or Chautauqua Park" />
+            <button type="button" id="geocodeBtn" class="btn btn-outline-secondary">Get Coordinates</button>
+          </div>
+          <small id="geocodeStatus" class="text-muted" style="display: none;"></small>
         </div>
 
         <input type="hidden" id="latitude" name="latitude" />

@@ -1,38 +1,131 @@
 <div class="comment-container">
-  <!-- Post Info -->
-  <div class="post-info-container">
-    <div class="post-picture">Picture</div>
-    <div class="bird-info">
-      <p>Bird Name: Blue Jay</p>
-      <p>Location: Central Park</p>
-      <p>Date: Nov 6, 2025</p>
-    </div>
-  </div>
-
-  <!-- Comment Section -->
-  <div class="comment-section">
-    <h3>Comment Here</h3>
-    <form class="comment-form">
-      <textarea placeholder="Write your comment..."></textarea>
-      <button type="submit">Post Comment</button>
-    </form>
-
-    <!-- Sample comments -->
-    <div class="comment-list">
-      <div class="comment">
-        <div class="pfp"></div>
-        <div class="comment-content">
-          <span class="comment-username">User1 writes:</span>
-          <p class="comment-text">This is a placeholder comment.</p>
-        </div>
+  {{#if sighting}}
+    <!-- Post Info -->
+    <div class="post-info-container">
+      <div class="post-picture">
+        <img src="{{sighting.photo}}" alt="{{sighting.bird}}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 16px;" onerror="this.src='/images/default_bird.png'">
       </div>
-      <div class="comment">
-        <div class="pfp"></div>
-        <div class="comment-content">
-          <span class="comment-username">User2 writes:</span>
-          <p class="comment-text">Another example comment.</p>
-        </div>
+      <div class="bird-info">
+        <p><strong>Bird Name:</strong> {{sighting.bird}}</p>
+        <p><strong>Location:</strong> {{sighting.location}}</p>
+        <p><strong>Date:</strong> {{#if sighting.time}}{{sighting.time}}{{else}}{{sighting.created_at}}{{/if}}</p>
+        {{#if sighting.description}}
+          <p><strong>Description:</strong> {{sighting.description}}</p>
+        {{/if}}
+        <p><strong>Posted by:</strong> {{sighting.user_name}}</p>
       </div>
     </div>
-  </div>
+
+    <!-- Comment Section -->
+    <div class="comment-section">
+      <h3>Comment Here</h3>
+      <form class="comment-form" id="commentForm">
+        <input type="hidden" id="sightingId" value="{{sighting.id}}">
+        <textarea id="commentText" placeholder="Write your comment..." required></textarea>
+        <button type="submit">Post Comment</button>
+      </form>
+
+      <!-- Comments List -->
+      <div class="comment-list" id="commentList">
+        {{#if comments}}
+          {{#each comments}}
+            <div class="comment">
+              <div class="pfp">
+                <img src="{{this.user_profile_picture}}" alt="{{this.user_name}}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.src='/images/default_pfp.png'">
+              </div>
+              <div class="comment-content">
+                <span class="comment-username">{{this.user_name}} writes:</span>
+                <p class="comment-text">{{this.comment_text}}</p>
+                <p class="comment-date" style="font-size: 0.85rem; color: #8d6e63; margin-top: 4px;">
+                  {{this.created_at}}
+                </p>
+              </div>
+            </div>
+          {{/each}}
+        {{else}}
+          <p style="color: #8d6e63; text-align: center; padding: 20px;">No comments yet. Be the first to comment!</p>
+        {{/if}}
+      </div>
+    </div>
+  {{else}}
+    <div style="text-align: center; padding: 40px;">
+      <p>No bird sighting selected. Please navigate from a bird post.</p>
+      <a href="/home" style="color: #8d6e63;">Go to Home</a>
+    </div>
+  {{/if}}
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const commentForm = document.getElementById('commentForm');
+    const commentText = document.getElementById('commentText');
+    const commentList = document.getElementById('commentList');
+    const sightingId = document.getElementById('sightingId')?.value;
+    
+    if (!sightingId) {
+      return; // No sighting ID, can't post comments
+    }
+    
+    commentForm?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const text = commentText.value.trim();
+      if (!text) {
+        alert('Please enter a comment');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/comments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sighting_id: parseInt(sightingId),
+            comment_text: text
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Clear the form
+          commentText.value = '';
+          
+          // Add the new comment to the list
+          const commentDiv = document.createElement('div');
+          commentDiv.className = 'comment';
+          commentDiv.innerHTML = `
+            <div class="pfp">
+              <img src="${data.comment.user_profile_picture || '/images/default_pfp.png'}" alt="${data.comment.user_name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.src='/images/default_pfp.png'">
+            </div>
+            <div class="comment-content">
+              <span class="comment-username">${data.comment.user_name} writes:</span>
+              <p class="comment-text">${data.comment.comment_text}</p>
+              <p class="comment-date" style="font-size: 0.85rem; color: #8d6e63; margin-top: 4px;">
+                ${new Date(data.comment.created_at).toLocaleString()}
+              </p>
+            </div>
+          `;
+          
+          // Remove "no comments" message if it exists
+          const noCommentsMsg = commentList.querySelector('p');
+          if (noCommentsMsg && noCommentsMsg.textContent.includes('No comments yet')) {
+            noCommentsMsg.remove();
+          }
+          
+          commentList.appendChild(commentDiv);
+          
+          // Scroll to the new comment
+          commentDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          alert(data.message || 'Error posting comment');
+        }
+      } catch (err) {
+        console.error('Error posting comment:', err);
+        alert('Error posting comment. Please try again.');
+      }
+    });
+  });
+</script>

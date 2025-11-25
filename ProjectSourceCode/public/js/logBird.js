@@ -8,7 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Your NEW list elements
   const speciesListBox = document.getElementById("speciesListBox");
   const speciesList = document.getElementById("speciesList");
+  const speciesSearch = document.getElementById("speciesSearch");
   const birdInput = document.getElementById("bird");
+  
+  // Store all species for filtering
+  let allSpecies = [];
 
   const loading = document.getElementById("loading");
   const birdResults = document.getElementById("birdResults");
@@ -39,32 +43,85 @@ const modal = {
   async function loadSpeciesList() {
     try {
       const res = await fetch("/api/birds/species");
-      const species = await res.json();
+      allSpecies = await res.json();
 
-      speciesList.innerHTML = ""; // Clear loading text
-
-      species.forEach(s => {
-        const row = document.createElement("div");
-        row.className = "p-2 border-bottom";
-        row.style.cursor = "pointer";
-        row.textContent = s.sciName
-          ? `${s.comName} (${s.sciName})`
-          : s.comName;
-
-        // When clicked → fill hidden bird input
-row.addEventListener("click", () => {
-  birdInput.value = s.comName;
-  document.getElementById("selectedBirdDisplay").textContent = s.comName;
-});
-
-        speciesList.appendChild(row);
-      });
+      // Initial render of all species
+      renderSpeciesList(allSpecies);
 
     } catch (err) {
       console.error("Failed loading species:", err);
       speciesList.innerHTML = `<p class="text-danger">Error loading species</p>`;
     }
   }
+
+  // Render species list (with optional filter)
+  function renderSpeciesList(speciesToShow) {
+    speciesList.innerHTML = ""; // Clear existing
+
+    if (speciesToShow.length === 0) {
+      speciesList.innerHTML = `<p class="text-muted p-2">No birds found matching your search.</p>`;
+      return;
+    }
+
+    speciesToShow.forEach(s => {
+      const row = document.createElement("div");
+      row.className = "species-item p-2 border-bottom";
+      row.style.cursor = "pointer";
+      row.style.transition = "background-color 0.2s";
+      
+      const displayText = s.sciName
+        ? `${s.comName} (${s.sciName})`
+        : s.comName;
+      
+      row.textContent = displayText;
+
+      // Hover effect
+      row.addEventListener("mouseenter", () => {
+        row.style.backgroundColor = "#f0e6df";
+      });
+      row.addEventListener("mouseleave", () => {
+        row.style.backgroundColor = "";
+      });
+
+      // When clicked → fill hidden bird input
+      row.addEventListener("click", () => {
+        birdInput.value = s.comName;
+        document.getElementById("selectedBirdDisplay").textContent = s.comName;
+        // Highlight selected
+        document.querySelectorAll(".species-item").forEach(item => {
+          item.style.backgroundColor = "";
+          item.style.fontWeight = "";
+        });
+        row.style.backgroundColor = "#d7ccc8";
+        row.style.fontWeight = "600";
+      });
+
+      speciesList.appendChild(row);
+    });
+  }
+
+  // ======================================================
+  // 1.5. SEARCH FUNCTIONALITY
+  // ======================================================
+  if (speciesSearch) {
+    speciesSearch.addEventListener("input", (e) => {
+      const searchTerm = e.target.value.trim().toLowerCase();
+      
+      if (searchTerm === "") {
+        // Show all species if search is empty
+        renderSpeciesList(allSpecies);
+      } else {
+        // Filter species by search term (searches both common and scientific names)
+        const filtered = allSpecies.filter(s => {
+          const comName = (s.comName || "").toLowerCase();
+          const sciName = (s.sciName || "").toLowerCase();
+          return comName.includes(searchTerm) || sciName.includes(searchTerm);
+        });
+        renderSpeciesList(filtered);
+      }
+    });
+  }
+
   loadSpeciesList();
 
   // ======================================================
@@ -140,22 +197,94 @@ birds.forEach(name => {
   // ======================================================
   // 5. GEOCODE LOCATION → LAT/LNG
   // ======================================================
+  const geocodeBtn = document.getElementById("geocodeBtn");
+  const geocodeStatus = document.getElementById("geocodeStatus");
+  const logBirdForm = document.querySelector('form[action="/log-bird"]');
+
+  async function geocodeLocation() {
+    const text = locationInput.value.trim();
+    if (!text) {
+      geocodeStatus.textContent = "Please enter a location first.";
+      geocodeStatus.style.display = "block";
+      geocodeStatus.className = "text-danger";
+      return false;
+    }
+
+    geocodeStatus.textContent = "Looking up coordinates...";
+    geocodeStatus.style.display = "block";
+    geocodeStatus.className = "text-info";
+    geocodeBtn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/geocode?text=${encodeURIComponent(text)}`);
+      const data = await res.json();
+
+      // Check for errors in response
+      if (data.error) {
+        console.error("Geocode error:", data.error, data.details);
+        geocodeStatus.textContent = data.error || "Could not find coordinates for this location. Try a more specific address.";
+        geocodeStatus.className = "text-warning";
+        return false;
+      }
+
+      // Check if we got valid coordinates
+      if (data.lat && data.lng) {
+        latField.value = data.lat;
+        lngField.value = data.lng;
+        const placeName = data.place_name ? ` (${data.place_name})` : '';
+        geocodeStatus.textContent = `✓ Coordinates found: ${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}${placeName}`;
+        geocodeStatus.className = "text-success";
+        return true;
+      } else {
+        console.warn("Geocode response missing coordinates:", data);
+        geocodeStatus.textContent = "Could not find coordinates for this location. Try a more specific address.";
+        geocodeStatus.className = "text-warning";
+        return false;
+      }
+    } catch (err) {
+      console.error("Geocode failed:", err);
+      geocodeStatus.textContent = "Error looking up coordinates. Please check your connection and try again.";
+      geocodeStatus.className = "text-danger";
+      return false;
+    } finally {
+      geocodeBtn.disabled = false;
+    }
+  }
+
+  // Geocode on button click
+  if (geocodeBtn) {
+    geocodeBtn.addEventListener("click", geocodeLocation);
+  }
+
+  // Also geocode on blur (when user leaves the field)
   if (locationInput) {
     locationInput.addEventListener("blur", async () => {
       const text = locationInput.value.trim();
-      if (!text) return;
+      if (!text || (latField.value && lngField.value)) return; // Skip if already has coordinates
+      await geocodeLocation();
+    });
+  }
 
-      try {
-        const res = await fetch(`/api/geocode?text=${encodeURIComponent(text)}`);
-        const data = await res.json();
-
-        if (data.lat && data.lng) {
-          latField.value = data.lat;
-          lngField.value = data.lng;
+  // Validate coordinates before form submission
+  if (logBirdForm) {
+    logBirdForm.addEventListener("submit", async (e) => {
+      const locationText = locationInput.value.trim();
+      
+      // If location is provided but no coordinates, try to geocode first
+      if (locationText && (!latField.value || !lngField.value)) {
+        e.preventDefault();
+        const success = await geocodeLocation();
+        
+        if (success) {
+          // Coordinates found, submit the form
+          logBirdForm.submit();
+        } else {
+          // Ask user if they want to proceed without coordinates
+          const proceed = confirm("Could not find coordinates for this location. The bird will be saved but won't appear on the map. Do you want to continue?");
+          if (proceed) {
+            logBirdForm.submit();
+          }
         }
-
-      } catch (err) {
-        console.error("Geocode failed:", err);
       }
     });
   }
