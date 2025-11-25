@@ -121,16 +121,82 @@ app.get("/api/birds/species", async (req, res) => {
 // ======================
 const MAPBOX_TOKEN = process.env.MAPBOX_API_KEY;
 
+// Test endpoint to check Mapbox API key
+app.get("/api/geocode/test", async (req, res) => {
+  if (!MAPBOX_TOKEN) {
+    return res.json({ 
+      error: "MAPBOX_API_KEY not set",
+      suggestion: "Add MAPBOX_API_KEY to your .env file"
+    });
+  }
+
+  // Test with a simple query
+  const testUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/Boulder.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+  
+  try {
+    const response = await fetch(testUrl);
+    const contentType = response.headers.get("content-type") || "";
+    const bodyText = await response.text();
+    
+    return res.json({
+      status: response.status,
+      contentType: contentType,
+      hasJson: contentType.includes("application/json"),
+      bodyPreview: bodyText.slice(0, 300),
+      apiKeyLength: MAPBOX_TOKEN.length,
+      apiKeyPrefix: MAPBOX_TOKEN.substring(0, 10) + "..."
+    });
+  } catch (err) {
+    return res.json({
+      error: err.message,
+      suggestion: "Check your Mapbox API key or use OpenStreetMap fallback"
+    });
+  }
+});
+
 app.get("/api/geocode", async (req, res) => {
   const text = req.query.text;
   if (!text) {
-    return res.json({});
+    return res.json({ error: "No location text provided" });
+  }
+
+  // Helper function to use OpenStreetMap Nominatim (free, no API key)
+  async function geocodeWithOpenStreetMap(query) {
+    try {
+      const osmUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+      const osmResponse = await fetch(osmUrl, {
+        headers: {
+          'User-Agent': 'Bird-Brain-App/1.0' // Required by Nominatim
+        }
+      });
+      
+      if (osmResponse.ok) {
+        const osmData = await osmResponse.json();
+        if (osmData && osmData.length > 0) {
+          const result = osmData[0];
+          return {
+            lat: parseFloat(result.lat),
+            lng: parseFloat(result.lon),
+            place_name: result.display_name || query,
+            source: "OpenStreetMap"
+          };
+        }
+      }
+    } catch (err) {
+      console.error("OpenStreetMap geocoding error:", err);
+    }
+    return null;
   }
 
   try {
+    // If no Mapbox token, use OpenStreetMap directly
     if (!MAPBOX_TOKEN) {
-      console.error("MAPBOX_ACCESS_TOKEN is not set");
-      return res.json({});
+      console.log("MAPBOX_API_KEY not set, using OpenStreetMap...");
+      const osmResult = await geocodeWithOpenStreetMap(text);
+      if (osmResult) {
+        return res.json(osmResult);
+      }
+      return res.json({ error: "Could not geocode location. Please try a more specific address." });
     }
 
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
@@ -143,18 +209,48 @@ app.get("/api/geocode", async (req, res) => {
       },
     });
 
+    // Check if response is OK
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Mapbox API error (${response.status}):`, errorText.slice(0, 500));
+      console.log("Falling back to OpenStreetMap...");
+      
+      // Fallback to OpenStreetMap
+      const osmResult = await geocodeWithOpenStreetMap(text);
+      if (osmResult) {
+        return res.json(osmResult);
+      }
+      
+      return res.json({ 
+        error: `Geocoding failed: ${response.status} ${response.statusText}`,
+        details: errorText.slice(0, 200)
+      });
+    }
+
     const contentType = response.headers.get("content-type") || "";
 
     // Read the body once as text so we can handle both JSON and HTML safely
     const bodyText = await response.text();
 
-    // If Mapbox (or some proxy) sends HTML, don't try to JSON.parse it
+    // If Mapbox (or some proxy) sends HTML, fall back to OpenStreetMap
     if (!contentType.includes("application/json")) {
-      console.error(
+      console.warn(
         "Mapbox geocode response is not JSON. Body preview:\n",
         bodyText.slice(0, 500)
       );
-      return res.json({});
+      console.log("Falling back to OpenStreetMap...");
+      
+      // Fallback to OpenStreetMap
+      const osmResult = await geocodeWithOpenStreetMap(text);
+      if (osmResult) {
+        return res.json(osmResult);
+      }
+      
+      return res.json({ 
+        error: "Invalid response from geocoding service. Your Mapbox API key may be invalid or expired.",
+        details: bodyText.slice(0, 200),
+        suggestion: "Check your Mapbox API key or the service will use OpenStreetMap as fallback"
+      });
     }
 
     let data;
@@ -167,21 +263,49 @@ app.get("/api/geocode", async (req, res) => {
         "\nBody preview:\n",
         bodyText.slice(0, 500)
       );
-      return res.json({});
+      return res.json({ 
+        error: "Failed to parse geocoding response",
+        details: bodyText.slice(0, 200)
+      });
+    }
+
+    // Check for Mapbox API errors
+    if (data.message) {
+      console.error("Mapbox API error:", data.message);
+      return res.json({ 
+        error: data.message || "Geocoding service error"
+      });
     }
 
     if (!data.features || data.features.length === 0) {
-      return res.json({});
+      console.log(`No results found for: "${text}"`);
+      return res.json({ 
+        error: "No location found. Try a more specific address or city name.",
+        query: text
+      });
     }
 
     const first = data.features[0];
+    
+    // Check if center exists
+    if (!first.center || first.center.length < 2) {
+      console.error("Invalid center data:", first);
+      return res.json({ 
+        error: "Invalid location data returned"
+      });
+    }
+
     // Mapbox center: [lng, lat]
     const [lng, lat] = first.center;
 
-    return res.json({ lat, lng });
+    console.log(`Geocoded "${text}" to: ${lat}, ${lng}`);
+    return res.json({ lat, lng, place_name: first.place_name || text });
   } catch (err) {
     console.error("Mapbox geocode failed:", err);
-    return res.json({});
+    return res.json({ 
+      error: "Geocoding service unavailable. Please try again later.",
+      details: err.message
+    });
   }
 });
 // ======================
@@ -384,8 +508,58 @@ app.get("/home", isAuthenticated, async (req, res) => {
       photo: row.photo || "/images/default_bird.png"
     }));
 
-    // TEMP: use fake friend posts until friend system is ready
-    const friendLogs = fakeFriendPosts;
+    // Fetch friend posts - get all accepted friends
+    const friendsResult = await pool.query(
+      `SELECT 
+        u.id as friend_id,
+        u.name as friend_name,
+        u.email as friend_email
+       FROM friendships f
+       JOIN users u ON (
+         CASE 
+           WHEN f.requester_id = $1 THEN u.id = f.receiver_id
+           ELSE u.id = f.requester_id
+         END
+       )
+       WHERE (f.requester_id = $1 OR f.receiver_id = $1) 
+         AND f.status = 'accepted'`,
+      [userId]
+    );
+    
+    // Get all bird sightings from friends
+    let friendLogs = [];
+    if (friendsResult.rows.length > 0) {
+      const friendIds = friendsResult.rows.map(f => f.friend_id);
+      // Create placeholders for IN clause
+      const placeholders = friendIds.map((_, i) => `$${i + 1}`).join(',');
+      const friendPostsResult = await pool.query(
+        `SELECT 
+          bs.id,
+          bs.bird as species,
+          bs.location,
+          to_char(bs.time, 'Mon DD, YYYY HH12:MI AM') as sighting_date,
+          bs.description as notes,
+          bs.photo,
+          bs.created_at,
+          bs.user_id,
+          u.name as user
+         FROM bird_sightings bs
+         JOIN users u ON bs.user_id = u.id
+         WHERE bs.user_id IN (${placeholders})
+         ORDER BY bs.created_at DESC`,
+        friendIds
+      );
+      
+      friendLogs = friendPostsResult.rows.map(row => ({
+        id: row.id,
+        species: row.species,
+        location: row.location || "Unknown location",
+        sighting_date: row.sighting_date || new Date(row.created_at).toLocaleString(),
+        notes: row.notes || "",
+        photo: row.photo || "/images/default_bird.png",
+        user: row.user
+      }));
+    }
 
     // Render template with both
     res.render("home", { title: "Home", logs, friendLogs });
@@ -402,8 +576,135 @@ app.get("/map", isAuthenticated, (req, res) => {
   res.render("map", { title: "Map" });
 });
 
+// API endpoint to fetch all bird sightings with coordinates for the map
+app.get("/api/bird-sightings/map", isAuthenticated, async (req, res) => {
+  try {
+    const currentUserId = req.session.user.id;
+    const result = await pool.query(
+      `SELECT 
+        bs.id,
+        bs.bird,
+        bs.location,
+        bs.latitude,
+        bs.longitude,
+        bs.photo,
+        bs.description,
+        bs.created_at,
+        bs.user_id,
+        u.name as user_name,
+        u.email as user_email,
+        u.profile_picture as user_profile_picture
+       FROM bird_sightings bs
+       JOIN users u ON bs.user_id = u.id
+       WHERE bs.latitude IS NOT NULL 
+         AND bs.longitude IS NOT NULL
+       ORDER BY bs.created_at DESC`
+    );
+    
+    // Check friendship status for each sighting
+    const sightingsWithFriendship = await Promise.all(
+      result.rows.map(async (sighting) => {
+        // Skip friendship check if it's the current user's own post
+        if (sighting.user_id === currentUserId) {
+          return { ...sighting, is_friend: null, is_self: true };
+        }
+        
+        // Check if already friends
+        const friendshipCheck = await pool.query(
+          `SELECT status FROM friendships 
+           WHERE ((requester_id = $1 AND receiver_id = $2) OR (requester_id = $2 AND receiver_id = $1))
+             AND status = 'accepted'`,
+          [currentUserId, sighting.user_id]
+        );
+        
+        const isFriend = friendshipCheck.rows.length > 0;
+        
+        // Check if there's a pending request
+        const pendingCheck = await pool.query(
+          `SELECT status FROM friendships 
+           WHERE ((requester_id = $1 AND receiver_id = $2) OR (requester_id = $2 AND receiver_id = $1))
+             AND status = 'pending'`,
+          [currentUserId, sighting.user_id]
+        );
+        
+        const hasPendingRequest = pendingCheck.rows.length > 0;
+        
+        return {
+          ...sighting,
+          is_friend: isFriend,
+          has_pending_request: hasPendingRequest,
+          is_self: false
+        };
+      })
+    );
+    
+    res.json({
+      success: true,
+      sightings: sightingsWithFriendship
+    });
+  } catch (err) {
+    console.error("Error fetching sightings for map:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching bird sightings",
+      sightings: []
+    });
+  }
+});
+
+// Get comments page for a specific bird sighting
+app.get("/comments/:sightingId", isAuthenticated, async (req, res) => {
+  try {
+    const sightingId = req.params.sightingId;
+    
+    // Fetch the bird sighting details
+    const sightingResult = await pool.query(
+      `SELECT bs.*, u.name as user_name, u.profile_picture as user_profile_picture
+       FROM bird_sightings bs
+       JOIN users u ON bs.user_id = u.id
+       WHERE bs.id = $1`,
+      [sightingId]
+    );
+    
+    if (sightingResult.rows.length === 0) {
+      return res.status(404).send("Bird sighting not found");
+    }
+    
+    const sighting = sightingResult.rows[0];
+    
+    // Fetch comments for this sighting
+    // Handle case where comments table might not exist yet
+    let comments = [];
+    try {
+      const commentsResult = await pool.query(
+        `SELECT c.*, u.name as user_name, u.profile_picture as user_profile_picture
+         FROM comments c
+         JOIN users u ON c.user_id = u.id
+         WHERE c.sighting_id = $1
+         ORDER BY c.created_at ASC`,
+        [sightingId]
+      );
+      comments = commentsResult.rows;
+    } catch (commentsErr) {
+      // If comments table doesn't exist, just use empty array
+      console.warn("Comments table may not exist yet:", commentsErr.message);
+      comments = [];
+    }
+    
+    res.render("comment", {
+      title: "Comments",
+      sighting: sighting,
+      comments: comments
+    });
+  } catch (err) {
+    console.error("Error loading comments page:", err);
+    res.status(500).send("Error loading comments: " + err.message);
+  }
+});
+
+// Old /comments route - redirect to home if no sighting ID provided
 app.get("/comments", isAuthenticated, (req, res) => {
-  res.render("comment", { title: "Comments" });
+  res.redirect("/home");
 });
 
 app.get("/friends", isAuthenticated, (req, res) => {
@@ -824,6 +1125,100 @@ app.delete("/api/friends/:friendId", isAuthenticated, async (req, res) => {
   }
 });
 
+// ======================
+// Comment API Routes
+// ======================
+
+// POST route to submit a comment
+app.post("/api/comments", isAuthenticated, async (req, res) => {
+  try {
+    const { sighting_id, comment_text } = req.body;
+    const userId = req.session.user.id;
+    
+    if (!sighting_id || !comment_text || comment_text.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Sighting ID and comment text are required"
+      });
+    }
+    
+    // Verify the sighting exists
+    const sightingCheck = await pool.query(
+      "SELECT id FROM bird_sightings WHERE id = $1",
+      [sighting_id]
+    );
+    
+    if (sightingCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Bird sighting not found"
+      });
+    }
+    
+    // Insert the comment
+    const result = await pool.query(
+      `INSERT INTO comments (sighting_id, user_id, comment_text)
+       VALUES ($1, $2, $3)
+       RETURNING id, created_at`,
+      [sighting_id, userId, comment_text.trim()]
+    );
+    
+    // Fetch the comment with user info for response
+    const commentResult = await pool.query(
+      `SELECT c.*, u.name as user_name, u.profile_picture as user_profile_picture
+       FROM comments c
+       JOIN users u ON c.user_id = u.id
+       WHERE c.id = $1`,
+      [result.rows[0].id]
+    );
+    
+    res.json({
+      success: true,
+      message: "Comment posted successfully",
+      comment: commentResult.rows[0]
+    });
+  } catch (err) {
+    console.error("Error posting comment:", err);
+    // Check if the error is because the table doesn't exist
+    if (err.message && err.message.includes('does not exist')) {
+      return res.status(500).json({
+        success: false,
+        message: "Comments table not found. Please run the database migration to create the comments table."
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: "Error posting comment: " + err.message
+    });
+  }
+});
+
+// GET route to fetch comments for a sighting (API endpoint)
+app.get("/api/comments/:sightingId", isAuthenticated, async (req, res) => {
+  try {
+    const sightingId = req.params.sightingId;
+    
+    const result = await pool.query(
+      `SELECT c.*, u.name as user_name, u.profile_picture as user_profile_picture
+       FROM comments c
+       JOIN users u ON c.user_id = u.id
+       WHERE c.sighting_id = $1
+       ORDER BY c.created_at ASC`,
+      [sightingId]
+    );
+    
+    res.json({
+      success: true,
+      comments: result.rows
+    });
+  } catch (err) {
+    console.error("Error fetching comments:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching comments"
+    });
+  }
+});
 
 // Always return the full species list (survey filters still work)
 app.get("/api/bird-suggestions", isAuthenticated, async (req, res) => {
@@ -870,15 +1265,40 @@ app.get("/api/users/:userId/posts", isAuthenticated, async (req, res) => {
     }
     
     const result = await pool.query(
-      `SELECT bl.*, u.name as user_name, u.profile_picture
-       FROM bird_logs bl
-       JOIN users u ON bl.user_id = u.id
-       WHERE bl.user_id = $1
-       ORDER BY bl.sighting_date_at DESC`,
+      `SELECT 
+        bs.id,
+        bs.bird as species,
+        bs.location,
+        bs.time as sighting_date,
+        to_char(bs.time, 'Mon DD, YYYY HH12:MI AM') as sighting_date_formatted,
+        bs.description as notes,
+        bs.photo,
+        bs.created_at,
+        bs.user_id,
+        u.name as user_name,
+        u.profile_picture
+       FROM bird_sightings bs
+       JOIN users u ON bs.user_id = u.id
+       WHERE bs.user_id = $1
+       ORDER BY bs.created_at DESC`,
       [userId]
     );
     
-    res.json(result.rows);
+    // Map to expected format
+    const posts = result.rows.map(row => ({
+      id: row.id,
+      species: row.species,
+      location: row.location || "Unknown location",
+      sighting_date: row.sighting_date_formatted || new Date(row.created_at).toLocaleString(),
+      sighting_date_at: row.sighting_date || row.created_at,
+      notes: row.notes || "",
+      photo: row.photo || "/images/default_bird.png",
+      user_id: row.user_id,
+      user_name: row.user_name,
+      profile_picture: row.profile_picture
+    }));
+    
+    res.json(posts);
   } catch (err) {
     console.error('Error fetching user posts:', err);
     res.status(500).json({
