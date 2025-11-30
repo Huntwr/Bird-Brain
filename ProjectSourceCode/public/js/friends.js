@@ -42,6 +42,23 @@ async function loadFriendRequestsFromDatabase() {
     }
 }
 
+// Render current tab - delegates to friends-tabs.js based on currentTab
+function renderCurrentTab() {
+    switch(currentTab) {
+        case 'friends':
+            renderFriendsList();
+            break;
+        case 'favorites':
+            renderFavoritesList();
+            break;
+        case 'requests':
+            renderFriendRequests();
+            break;
+        default:
+            renderFriendsList();
+    }
+}
+
 // Add a new friend request
 async function addFriend(friendData) {
     try {
@@ -185,6 +202,14 @@ function renderFriendsList() {
         
         friends.forEach((friend, index) => {
             const profilePic = friend.profile_picture ? friend.profile_picture : '/images/default_pfp.png';
+            const starClass = friend.isFavorite ? 'favorited' : '';
+            const starIcon = friend.isFavorite ? 
+                `<svg width="18" height="18" viewBox="0 0 24 24" fill="#ffd700" stroke="#ffd700" stroke-width="1">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>` :
+                `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ddd" stroke-width="2">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>`;
             
             friendsHTML += `
                 <div class="friend-card ${selectedFriend && selectedFriend.id === friend.id ? 'selected' : ''}" 
@@ -197,12 +222,78 @@ function renderFriendsList() {
                         <div class="friend-name">${friend.name}</div>
                     </div>
                     <div class="friend-actions">
-                        <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})" title="Remove friend">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
+                        <div class="action-buttons">
+                            <button class="favorite-btn ${starClass}" onclick="event.stopPropagation(); window.simpleFavoriteToggle(${friend.id})" title="${friend.isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                                ${starIcon}
+                            </button>
+                            <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})" title="Remove friend">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        friendsHTML += '</div>';
+        friendsList.innerHTML = friendsHTML;
+    }
+}
+
+// Render favorites list
+function renderFavoritesList() {
+    const friendsList = document.querySelector('.friends-list');
+    const favoriteFriends = friends.filter(f => f.isFavorite);
+    
+    if (favoriteFriends.length === 0) {
+        friendsList.innerHTML = `
+            <div class="friends-header">
+                <h3>Favorite Friends (0)</h3>
+            </div>
+            <div class="empty-state">
+                <h4>No Favorite Friends</h4>
+                <p>You haven't marked any friends as favorites yet. Click the ⭐ icon next to a friend to add them to your favorites!</p>
+            </div>
+        `;
+    } else {
+        let friendsHTML = `
+            <div class="friends-header">
+                <h3>Favorite Friends (${favoriteFriends.length})</h3>
+            </div>
+            <div class="friends-scroll">
+        `;
+        
+        favoriteFriends.forEach((friend) => {
+            const originalIndex = friends.findIndex(f => f.id === friend.id);
+            const profilePic = friend.profile_picture ? friend.profile_picture : '/images/default_pfp.png';
+            
+            friendsHTML += `
+                <div class="friend-card ${selectedFriend && selectedFriend.id === friend.id ? 'selected' : ''}" 
+                     onclick="selectFriend(${originalIndex})" data-friend-id="${friend.id}">
+                    <div class="friend-avatar-container">
+                        <img src="${profilePic}" alt="${friend.name}" class="friend-avatar">
+                        <div class="online-indicator"></div>
+                    </div>
+                    <div class="friend-details">
+                        <div class="friend-name">${friend.name} ⭐</div>
+                    </div>
+                    <div class="friend-actions">
+                        <div class="action-buttons">
+                            <button class="favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(${friend.id})" title="Remove from favorites">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffd700" stroke="#ffd700" stroke-width="1">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                            </button>
+                            <button class="remove-friend-btn" onclick="event.stopPropagation(); removeFriend(${friend.id})" title="Remove friend">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -414,9 +505,10 @@ function renderFriendPosts(posts) {
 
 // Update tab counts
 function updateTabCounts() {
+    const favoritesCount = friends.filter(f => f.isFavorite).length;
     document.getElementById('friends-count').textContent = friends.length;
     document.getElementById('requests-count').textContent = friendRequests.length;
-    document.getElementById('favorites-count').textContent = '0'; // Placeholder for future feature
+    document.getElementById('favorites-count').textContent = favoritesCount;
 }
 
 function likeFriend(friendIndex) {
@@ -509,7 +601,101 @@ function viewPost(friendIndex, postIndex) {
     alert(`${friend.name}'s Post:\n\n"${post.content}"\n\nPosted: ${formatDate(post.date)}`);
 }
 
+// Simple favorite toggle for testing
+window.simpleFavoriteToggle = function(friendId) {
+    console.log('Simple toggle called for friend ID:', friendId);
+    alert('Toggling favorite for friend ID: ' + friendId);
+    
+    // Find the friend
+    const friend = friends.find(f => f.id === friendId);
+    if (!friend) {
+        console.log('Friend not found');
+        return;
+    }
+    
+    // Toggle the favorite status locally (for immediate testing)
+    friend.isFavorite = !friend.isFavorite;
+    console.log('Friend', friend.name, 'isFavorite now:', friend.isFavorite);
+    
+    // Update the display
+    renderCurrentTab();
+    updateTabCounts();
+    
+    // Also call the API in the background
+    toggleFavoriteAPI(friendId);
+}
+
+// API call for favorite toggle
+async function toggleFavoriteAPI(friendId) {
+    try {
+        const friend = friends.find(f => f.id === friendId);
+        const method = friend.isFavorite ? 'POST' : 'DELETE';
+        const url = `/api/friends/${friendId}/favorite`;
+        
+        const response = await fetch(url, {
+            method: method,
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        console.log('API result:', result);
+    } catch (error) {
+        console.error('API error:', error);
+    }
+}
+
+// Toggle friend favorite status
+window.toggleFavorite = async function(friendId) {
+    alert('toggleFavorite function called! Friend ID: ' + friendId);
+    console.log('toggleFavorite called with friendId:', friendId);
+    try {
+        const friend = friends.find(f => f.id === friendId);
+        if (!friend) {
+            console.error('Friend not found:', friendId);
+            return;
+        }
+        
+        console.log('Friend found:', friend.name, 'isFavorite:', friend.isFavorite);
+        
+        const isFavorite = friend.isFavorite;
+        const method = isFavorite ? 'DELETE' : 'POST';
+        const url = `/api/friends/${friendId}/favorite`;
+        
+        console.log('Making API call:', method, url);
+        
+        const response = await fetch(url, {
+            method: method,
+            credentials: 'include'
+        });
+        
+        console.log('Response status:', response.status);
+        
+        const result = await response.json();
+        console.log('API result:', result);
+        
+        if (result.success) {
+            // Update local state
+            friend.isFavorite = !isFavorite;
+            console.log('Updated friend.isFavorite to:', friend.isFavorite);
+            
+            // Re-render the current tab to show updated state
+            renderCurrentTab();
+            updateTabCounts();
+            
+            // Show brief success message
+            console.log(result.message);
+        } else {
+            console.error('API error:', result.message);
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        alert('Error updating favorite status. Please try again.');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Friends.js loaded successfully');
     loadFriendsPage();
 });
 

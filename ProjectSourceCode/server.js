@@ -1065,7 +1065,8 @@ app.get("/api/friends", isAuthenticated, async (req, res) => {
     const result = await pool.query(
       `SELECT 
          u.id, u.name, u.email, u.profile_picture, u.bio, u.created_at,
-         f.created_at as friendship_date
+         f.created_at as friendship_date,
+         CASE WHEN fav.id IS NOT NULL THEN true ELSE false END as isFavorite
        FROM friendships f
        JOIN users u ON (
          CASE 
@@ -1073,6 +1074,7 @@ app.get("/api/friends", isAuthenticated, async (req, res) => {
            ELSE u.id = f.requester_id
          END
        )
+       LEFT JOIN favorites fav ON fav.user_id = $1 AND fav.friend_id = u.id
        WHERE (f.requester_id = $1 OR f.receiver_id = $1) 
          AND f.status = 'accepted'
        ORDER BY f.created_at DESC`,
@@ -1112,6 +1114,12 @@ app.delete("/api/friends/:friendId", isAuthenticated, async (req, res) => {
       });
     }
     
+    // Also remove from favorites if favorited
+    await pool.query(
+      `DELETE FROM favorites WHERE user_id = $1 AND friend_id = $2`,
+      [userId, friendId]
+    );
+    
     res.json({
       success: true,
       message: "Friend removed successfully"
@@ -1121,6 +1129,78 @@ app.delete("/api/friends/:friendId", isAuthenticated, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: "Unable to remove friend" 
+    });
+  }
+});
+
+// Add friend to favorites
+app.post("/api/friends/:friendId/favorite", isAuthenticated, async (req, res) => {
+  try {
+    const friendId = req.params.friendId;
+    const userId = req.session.user.id;
+    
+    // Check if friendship exists
+    const friendshipCheck = await pool.query(
+      `SELECT 1 FROM friendships 
+       WHERE ((requester_id = $1 AND receiver_id = $2) OR (requester_id = $2 AND receiver_id = $1))
+         AND status = 'accepted'`,
+      [userId, friendId]
+    );
+    
+    if (friendshipCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "You can only favorite friends"
+      });
+    }
+    
+    // Add to favorites
+    await pool.query(
+      `INSERT INTO favorites (user_id, friend_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, friend_id) DO NOTHING`,
+      [userId, friendId]
+    );
+    
+    res.json({
+      success: true,
+      message: "Friend added to favorites"
+    });
+  } catch (err) {
+    console.error("Error adding friend to favorites:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to add friend to favorites" 
+    });
+  }
+});
+
+// Remove friend from favorites
+app.delete("/api/friends/:friendId/favorite", isAuthenticated, async (req, res) => {
+  try {
+    const friendId = req.params.friendId;
+    const userId = req.session.user.id;
+    
+    const result = await pool.query(
+      `DELETE FROM favorites WHERE user_id = $1 AND friend_id = $2 RETURNING *`,
+      [userId, friendId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Friend not in favorites"
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: "Friend removed from favorites"
+    });
+  } catch (err) {
+    console.error("Error removing friend from favorites:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to remove friend from favorites" 
     });
   }
 });
