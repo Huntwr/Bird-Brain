@@ -163,13 +163,10 @@ function renderInviteTab() {
     `;
 }
 
+// Toggle friend favorite status (delegated to friends.js)
 function toggleFavorite(friendId) {
-    const friend = friends.find(f => f.id === friendId);
-    if (friend) {
-        friend.isFavorite = !friend.isFavorite;
-        saveFriendsToStorage();
-        renderCurrentTab();
-        updateTabCounts();
+    if (window.toggleFavorite) {
+        window.toggleFavorite(friendId);
     }
 }
 

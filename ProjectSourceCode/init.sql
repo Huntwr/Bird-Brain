@@ -37,6 +37,16 @@ CREATE TABLE IF NOT EXISTS friendships (
   CHECK (requester_id != receiver_id)
 );
 
+-- Favorites table to store which friends are favorited by users
+CREATE TABLE IF NOT EXISTS favorites (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  friend_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, friend_id),
+  CHECK (user_id != friend_id)
+);
+
 -- Comments table
 CREATE TABLE IF NOT EXISTS comments (
   id SERIAL PRIMARY KEY,
