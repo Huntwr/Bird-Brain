@@ -479,77 +479,77 @@ const fakeFriendPosts = [
 ];
 
 // Protected pages
+// REPLACE your existing /home route with this:
 app.get("/home", isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.user.id;
 
-    // Fetch your own posts - map NEW column names to OLD template expectations
-    const logsResult = await pool.query(
+    // 1) ALL posts (global feed) - show recent posts from all users
+    const allResult = await pool.query(
       `SELECT 
-        id,
-        bird as species,
-        location,
-        to_char(time, 'Mon DD, YYYY HH12:MI AM') as sighting_date,
-        description as notes,
-        photo,
-        created_at
-      FROM bird_sightings 
-      WHERE user_id = $1 
-      ORDER BY created_at DESC`,
-      [userId]
+         bs.id,
+         bs.bird AS species,
+         bs.location,
+         to_char(bs.time, 'Mon DD, YYYY HH12:MI AM') as sighting_date,
+         bs.description as notes,
+         bs.photo,
+         bs.created_at,
+         bs.user_id,
+         u.name as user_name,
+         u.profile_picture as user_profile_picture
+       FROM bird_sightings bs
+       JOIN users u ON bs.user_id = u.id
+       ORDER BY bs.created_at DESC
+       LIMIT 200`
     );
-    
-    const logs = logsResult.rows.map(row => ({
+
+    const allLogs = allResult.rows.map(row => ({
       id: row.id,
       species: row.species,
       location: row.location || "Unknown location",
       sighting_date: row.sighting_date || new Date(row.created_at).toLocaleString(),
       notes: row.notes || "",
-      photo: row.photo || "/images/default_bird.png"
+      photo: row.photo || "/images/default_bird.png",
+      user: row.user_name,
+      user_id: row.user_id,
+      profile_picture: row.user_profile_picture || "/images/default_pfp.png"
     }));
 
-    // Fetch friend posts - get all accepted friends
-    const friendsResult = await pool.query(
+    // 2) FRIEND posts - find accepted friendships, then posts from those friend IDs
+    const friendsRes = await pool.query(
       `SELECT 
-        u.id as friend_id,
-        u.name as friend_name,
-        u.email as friend_email
+         CASE WHEN f.requester_id = $1 THEN f.receiver_id ELSE f.requester_id END AS friend_id
        FROM friendships f
-       JOIN users u ON (
-         CASE 
-           WHEN f.requester_id = $1 THEN u.id = f.receiver_id
-           ELSE u.id = f.requester_id
-         END
-       )
-       WHERE (f.requester_id = $1 OR f.receiver_id = $1) 
+       WHERE (f.requester_id = $1 OR f.receiver_id = $1)
          AND f.status = 'accepted'`,
       [userId]
     );
-    
-    // Get all bird sightings from friends
+
     let friendLogs = [];
-    if (friendsResult.rows.length > 0) {
-      const friendIds = friendsResult.rows.map(f => f.friend_id);
-      // Create placeholders for IN clause
-      const placeholders = friendIds.map((_, i) => `$${i + 1}`).join(',');
-      const friendPostsResult = await pool.query(
-        `SELECT 
+    if (friendsRes.rows.length > 0) {
+      const friendIds = friendsRes.rows.map(r => r.friend_id);
+      // Build placeholders for parameterized IN clause
+      const placeholders = friendIds.map((_, i) => `$${i + 1}`).join(",");
+      const friendPostsQuery = `
+        SELECT
           bs.id,
-          bs.bird as species,
+          bs.bird AS species,
           bs.location,
           to_char(bs.time, 'Mon DD, YYYY HH12:MI AM') as sighting_date,
           bs.description as notes,
           bs.photo,
           bs.created_at,
           bs.user_id,
-          u.name as user
-         FROM bird_sightings bs
-         JOIN users u ON bs.user_id = u.id
-         WHERE bs.user_id IN (${placeholders})
-         ORDER BY bs.created_at DESC`,
-        friendIds
-      );
-      
+          u.name as user_name,
+          u.profile_picture as user_profile_picture
+        FROM bird_sightings bs
+        JOIN users u ON bs.user_id = u.id
+        WHERE bs.user_id IN (${placeholders})
+        ORDER BY bs.created_at DESC
+        LIMIT 200
+      `;
+      const friendPostsResult = await pool.query(friendPostsQuery, friendIds);
+
       friendLogs = friendPostsResult.rows.map(row => ({
         id: row.id,
         species: row.species,
@@ -557,12 +557,14 @@ app.get("/home", isAuthenticated, async (req, res) => {
         sighting_date: row.sighting_date || new Date(row.created_at).toLocaleString(),
         notes: row.notes || "",
         photo: row.photo || "/images/default_bird.png",
-        user: row.user
+        user: row.user_name,
+        user_id: row.user_id,
+        profile_picture: row.user_profile_picture || "/images/default_pfp.png"
       }));
     }
 
-    // Render template with both
-    res.render("home", { title: "Home", logs, friendLogs });
+    // Render template with both feeds
+    res.render("home", { title: "Home", allLogs, friendLogs, currentUserId: userId });
   } catch (err) {
     console.error("Error loading home feed:", err);
     res.status(500).send("Error loading home feed");

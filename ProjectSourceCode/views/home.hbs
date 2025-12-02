@@ -1,21 +1,21 @@
-
 <div class="feed-wrapper" style="max-width:1100px; margin: 2rem auto; padding: 0 16px;">
 
   <!-- Toggle -->
   <div class="post-toggle" style="display:flex; justify-content:center; gap:12px; margin-bottom:20px;">
-    <button id="yoursBtn" class="toggle-btn active">Yours</button>
+    <button id="allBtn" class="toggle-btn active">All</button>
     <button id="friendsBtn" class="toggle-btn">Friends</button>
   </div>
 
-  <!-- YOURS -->
-  <div id="yoursSection">
-    <h2 class="section-title">Your Sightings</h2>
+  <!-- ALL POSTS -->
+  <div id="allSection">
+    <h2 class="section-title">All Sightings</h2>
     <div class="card-grid">
-      {{#if logs.length}}
-        {{#each logs}}
+      {{#if allLogs.length}}
+        {{#each allLogs}}
           <div class="bird-card">
             <img src="{{this.photo}}" class="bird-photo" alt="{{this.species}}" onerror="this.src='/images/default_bird.png'"/>
             <div class="bird-card-body">
+              <p class="friend-name">{{this.user}}</p>
               <h3>{{this.species}}</h3>
               <p class="location">{{this.location}}</p>
               <p class="date">{{this.sighting_date}}</p>
@@ -25,7 +25,7 @@
           </div>
         {{/each}}
       {{else}}
-        <div class="empty-note">You haven't logged any sightings yet. <a href="/log-bird">Log one now</a>.</div>
+        <div class="empty-note">No sightings yet. <a href="/log-bird">Log the first one</a>!</div>
       {{/if}}
     </div>
   </div>
@@ -102,18 +102,18 @@
 </style>
 
 <script>
-  const yoursBtn = document.getElementById('yoursBtn');
+  const allBtn = document.getElementById('allBtn');
   const friendsBtn = document.getElementById('friendsBtn');
-  const yoursSection = document.getElementById('yoursSection');
+  const allSection = document.getElementById('allSection');
   const friendsSection = document.getElementById('friendsSection');
 
-  yoursBtn.addEventListener('click', () => {
-    yoursBtn.classList.add('active'); friendsBtn.classList.remove('active');
-    yoursSection.style.display = ''; friendsSection.style.display = 'none';
+  allBtn.addEventListener('click', () => {
+    allBtn.classList.add('active'); friendsBtn.classList.remove('active');
+    allSection.style.display = ''; friendsSection.style.display = 'none';
   });
 
   friendsBtn.addEventListener('click', () => {
-    friendsBtn.classList.add('active'); yoursBtn.classList.remove('active');
-    friendsSection.style.display = ''; yoursSection.style.display = 'none';
+    friendsBtn.classList.add('active'); allBtn.classList.remove('active');
+    friendsSection.style.display = ''; allSection.style.display = 'none';
   });
 </script>
