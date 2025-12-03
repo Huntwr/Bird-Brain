@@ -39,9 +39,6 @@ function renderCurrentTab() {
         case 'requests':
             renderRequestsList();
             break;
-        case 'invite':
-            renderInviteTab();
-            break;
         default:
             renderFriendsList();
     }
@@ -151,16 +148,6 @@ function renderRequestsList() {
         requestsHTML += '</div>';
         friendsList.innerHTML = requestsHTML;
     }
-}
-
-function renderInviteTab() {
-    const friendsList = document.querySelector('.friends-list');
-    
-    friendsList.innerHTML = `
-        <div class="friends-header">
-            <h3>Invite</h3>
-        </div>
-    `;
 }
 
 // Toggle friend favorite status (delegated to friends.js)
