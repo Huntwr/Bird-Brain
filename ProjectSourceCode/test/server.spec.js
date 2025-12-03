@@ -28,11 +28,12 @@ describe('Register API', () => {
 
   // Positive Test Case
   it('Positive: should register a valid user successfully', done => {
+    const uniqueUsername = `testuser_${Date.now()}`;
     chai
       .request(server)
       .post('/register')
       .send({
-        username: 'testuser',
+        username: uniqueUsername,
         password: 'validpassword123'
       })
       .end((err, res) => {
