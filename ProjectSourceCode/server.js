@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const exphbs = require("express-handlebars");
 const path = require("path");
@@ -6,7 +7,6 @@ const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-require("dotenv").config();
 
 
 const multer = require("multer");
@@ -82,7 +82,47 @@ function isAuthenticated(req, res, next) {
   if (req.session.user) return next();
   res.redirect("/login");
 }
+// Simple welcome route for automated tests (Lab 10)
+app.get("/welcome", (req, res) => {
+  res.json({ status: "success", message: "Welcome!" });
+});
+// JSON-based register route for automated tests (Lab 10)
+app.post("/register", async (req, res) => {
+  const { username, password } = req.body;
 
+  // Basic validation
+  if (!username || !password || username.trim() === "" || password.trim() === "") {
+    return res.status(400).json({ message: "Invalid input" });
+  }
+
+  try {
+    // Hash the password
+    const hashed = await bcrypt.hash(password, 10);
+
+
+    // Fake email so NOT NULL constraint is happy
+    const fakeEmail = `${username}@test.local`;
+
+    // Insert into users table using username -> name, fake email, and password
+    await pool.query(
+      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3)",
+      [username, fakeEmail, hashed]
+    );
+
+    // Success response for tests
+    res.status(200).json({ message: "Success" });
+
+  } catch (err) {
+    console.error("Register API error:", err);
+
+    // Unique violation (if username must be unique)
+    if (err.code === "23505") {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 // Routes
 // Mapbox API Key route
 app.get("/config", (req, res) => {
@@ -307,6 +347,10 @@ app.get("/api/geocode", async (req, res) => {
       details: err.message
     });
   }
+});
+// Simple test route for redirect testing (Lab 10 example)
+app.get("/test", (req, res) => {
+  res.redirect("/login");
 });
 // ======================
 // Log Bird POST route
@@ -823,7 +867,6 @@ app.get("/profile", isAuthenticated, async (req, res) => {
       });
     }
 
-    // 🔥 Fetch posts by this user
     const postsResult = await pool.query(
       "SELECT * FROM bird_sightings WHERE user_id = $1 ORDER BY created_at DESC",
       [user.id]
@@ -1491,8 +1534,9 @@ app.use((err, req, res, next) => {
   console.error('Unexpected error:', err)
   res.status(500).send('Something went wrong. Please try again later.')
 })
+// Start server and export for tests
+const server = app.listen(PORT, () => {
+  console.log(`Bird Brain running on http://localhost:${PORT}`);
+});
 
-// Start server
-app.listen(PORT, () => console.log(`Bird Brain running on http://localhost:${PORT}`));
-
-// merge main 
+module.exports = server;
