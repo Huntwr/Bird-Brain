@@ -398,37 +398,118 @@ app.get("/signup", (req, res) => {
 });
 
 // Signup POST
+// REPLACE your existing /signup and /login routes with these improved versions:
+
+// Signup POST - with proper error handling
 app.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
+  
   try {
+    // Validate input
+    if (!name || !email || !password) {
+      return res.status(400).render("signup", {
+        title: "Sign Up",
+        hideNavbar: true,
+        error: "All fields are required"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).render("signup", {
+        title: "Sign Up",
+        hideNavbar: true,
+        error: "Password must be at least 6 characters long"
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).render("signup", {
+        title: "Sign Up",
+        hideNavbar: true,
+        error: "An account with this email already exists. Please log in instead."
+      });
+    }
+
+    // Create new user
     const hashed = await bcrypt.hash(password, 10);
     await pool.query(
       "INSERT INTO users (name, email, password) VALUES ($1, $2, $3)",
       [name, email, hashed]
     );
-    res.redirect("/login");
+
+    // Redirect to login with success message
+    res.render("login", {
+      title: "Log In",
+      hideNavbar: true,
+      success: "Account created successfully! Please log in."
+    });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
+    console.error("Signup error:", err);
+    
+    // Check for specific database errors
+    if (err.code === '23505') { // Unique violation
+      return res.status(400).render("signup", {
+        title: "Sign Up",
+        hideNavbar: true,
+        error: "An account with this email already exists."
+      });
+    }
+
+    res.status(500).render("signup", {
+      title: "Sign Up",
+      hideNavbar: true,
+      error: "Server error. Please try again later."
+    });
   }
 });
 
-// Login POST
+// Login POST - with proper error handling
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body
+  const { email, password } = req.body;
+  
   try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email])
-    const user = result.rows[0]
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).render("login", {
+        title: "Log In",
+        hideNavbar: true,
+        error: "Email and password are required"
+      });
+    }
+
+    // Find user
+    const result = await pool.query(
+      'SELECT * FROM users WHERE LOWER(email) = LOWER($1)', 
+      [email]
+    );
+    const user = result.rows[0];
 
     if (!user) {
-      return res.send("<script>alert('User does not exist. Try again.'); window.location.href = '/login';</script>")
+      return res.status(401).render("login", {
+        title: "Log In",
+        hideNavbar: true,
+        error: "No account found with this email. Please sign up first."
+      });
     }
 
-    const match = await bcrypt.compare(password, user.password)
+    // Check password
+    const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.send("<script>alert('Incorrect password. Try again.'); window.location.href = '/login';</script>")
+      return res.status(401).render("login", {
+        title: "Log In",
+        hideNavbar: true,
+        error: "Incorrect password. Please try again."
+      });
     }
 
+    // Success - create session
     req.session.user = { 
       id: user.id, 
       name: user.name, 
@@ -437,12 +518,18 @@ app.post('/login', async (req, res) => {
       profile_picture: user.profile_picture || "/images/default_pfp.png",
       bio: user.bio
     };
-    res.redirect('/home')
+
+    res.redirect('/home');
+
   } catch (err) {
-    console.error('Login error:', err)
-    res.send("<script>alert('Server error. Please try again later.'); window.location.href = '/login';</script>")
+    console.error('Login error:', err);
+    res.status(500).render("login", {
+      title: "Log In",
+      hideNavbar: true,
+      error: "Server error. Please try again later."
+    });
   }
-})
+});
 
 // Logout
 app.get("/logout", (req, res) => {

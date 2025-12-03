@@ -3,10 +3,16 @@
     <h1>Create Account</h1>
     <p class="subtitle">Join the flock 🪶</p>
 
+    {{#if error}}
+      <div class="alert alert-error">
+        {{error}}
+      </div>
+    {{/if}}
+
     <form action="/signup" method="POST">
       <div class="input-group">
         <label>Full Name</label>
-        <input type="text" name="name" placeholder="Your name" required />
+        <input type="text" name="name" placeholder="Your name" required minlength="2" />
       </div>
 
       <div class="input-group">
@@ -16,7 +22,7 @@
 
       <div class="input-group">
         <label>Password</label>
-        <input type="password" name="password" placeholder="Create a password" required />
+        <input type="password" name="password" placeholder="Create a password (min 6 characters)" required minlength="6" />
       </div>
 
       <button type="submit">Sign Up</button>
@@ -27,3 +33,30 @@
     </form>
   </div>
 </div>
+
+<style>
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-error {
+  background: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+}
+</style>
