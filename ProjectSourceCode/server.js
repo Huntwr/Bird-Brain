@@ -1477,6 +1477,16 @@ app.get("/api/users/:userId/posts", isAuthenticated, async (req, res) => {
   }
 });
 
+app.get("/admin/cleanup", isAuthenticated, async (req, res) => {
+  try {
+    const result = await pool.query("DELETE FROM bird_sightings RETURNING *");
+    res.send(`Deleted ${result.rowCount} posts. <a href="/home">Go to home</a>`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error: " + err.message);
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error('Unexpected error:', err)
   res.status(500).send('Something went wrong. Please try again later.')
