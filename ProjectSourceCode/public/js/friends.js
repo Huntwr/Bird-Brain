@@ -4,6 +4,38 @@ let friendRequests = [];
 let selectedFriend = null;
 let currentTab = 'friends';
 
+// Notification system
+function showNotification(message, type = 'success') {
+    const container = document.getElementById('notification-container');
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    
+    const icon = type === 'success' ? '✓' : '✗';
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-icon">${icon}</span>
+            <span class="notification-text">${message}</span>
+        </div>
+    `;
+    
+    container.appendChild(notification);
+    
+    // Trigger animation
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (container.contains(notification)) {
+                container.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
 // Load friends from database
 async function loadFriendsFromDatabase() {
     try {
@@ -76,16 +108,16 @@ async function addFriend(friendData) {
         const result = await response.json();
 
         if (!result.success) {
-            alert(result.message);
+            showNotification(result.message, 'error');
             return false;
         }
 
-        alert(result.message);
+        showNotification(`Friend request sent to ${friendData.email}`);
         closeAddFriendModal();
         return true;
     } catch (error) {
         console.error('Error sending friend request:', error);
-        alert('Error sending friend request. Please try again.');
+        showNotification('Error sending friend request. Please try again.', 'error');
         return false;
     }
 }
@@ -101,17 +133,21 @@ async function acceptFriendRequest(requestId) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Friend request accepted!');
+            // Find the request to get the requester's name
+            const request = friendRequests.find(r => r.id === requestId);
+            const requesterName = request ? request.requester_name : 'Friend';
+            
+            showNotification(`${requesterName} is now your friend!`);
             await loadFriendsFromDatabase();
             await loadFriendRequestsFromDatabase();
             renderCurrentTab();
             updateTabCounts();
         } else {
-            alert(result.message);
+            showNotification(result.message, 'error');
         }
     } catch (error) {
         console.error('Error accepting friend request:', error);
-        alert('Error accepting friend request. Please try again.');
+        showNotification('Error accepting friend request. Please try again.', 'error');
     }
 }
 
@@ -126,22 +162,25 @@ async function declineFriendRequest(requestId) {
         const result = await response.json();
 
         if (result.success) {
-            alert('Friend request declined');
+            showNotification('Friend request declined');
             await loadFriendRequestsFromDatabase();
             renderCurrentTab();
             updateTabCounts();
         } else {
-            alert(result.message);
+            showNotification(result.message, 'error');
         }
     } catch (error) {
         console.error('Error declining friend request:', error);
-        alert('Error declining friend request. Please try again.');
+        showNotification('Error declining friend request. Please try again.', 'error');
     }
 }
 
 // Remove a friend
 async function removeFriend(friendId) {
-    if (confirm('Are you sure you want to remove this friend?')) {
+    const friend = friends.find(f => f.id === friendId);
+    const friendName = friend ? friend.name : 'Friend';
+    
+    if (confirm(`Are you sure you want to remove ${friendName}?`)) {
         try {
             const response = await fetch(`/api/friends/${friendId}`, {
                 method: 'DELETE',
@@ -151,18 +190,18 @@ async function removeFriend(friendId) {
             const result = await response.json();
 
             if (result.success) {
-                alert('Friend removed successfully');
+                showNotification(`${friendName} removed from friends`);
                 selectedFriend = null;
                 await loadFriendsFromDatabase();
                 renderCurrentTab();
                 updateTabCounts();
                 renderSelectedFriend();
             } else {
-                alert(result.message);
+                showNotification(result.message, 'error');
             }
         } catch (error) {
             console.error('Error removing friend:', error);
-            alert('Error removing friend. Please try again.');
+            showNotification('Error removing friend. Please try again.', 'error');
         }
     }
 }
@@ -282,7 +321,7 @@ function renderFavoritesList() {
                     </div>
                     <div class="friend-actions">
                         <div class="action-buttons">
-                            <button class="favorite-btn favorited" onclick="event.stopPropagation(); toggleFavorite(${friend.id})" title="Remove from favorites">
+                            <button class="favorite-btn favorited" onclick="event.stopPropagation(); window.simpleFavoriteToggle(${friend.id})" title="Remove from favorites">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#ffd700" stroke="#ffd700" stroke-width="1">
                                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                                 </svg>
@@ -604,7 +643,6 @@ function viewPost(friendIndex, postIndex) {
 // Simple favorite toggle for testing
 window.simpleFavoriteToggle = function(friendId) {
     console.log('Simple toggle called for friend ID:', friendId);
-    alert('Toggling favorite for friend ID: ' + friendId);
     
     // Find the friend
     const friend = friends.find(f => f.id === friendId);
@@ -614,8 +652,16 @@ window.simpleFavoriteToggle = function(friendId) {
     }
     
     // Toggle the favorite status locally (for immediate testing)
+    const wasAFavorite = friend.isFavorite;
     friend.isFavorite = !friend.isFavorite;
     console.log('Friend', friend.name, 'isFavorite now:', friend.isFavorite);
+    
+    // Show notification
+    if (friend.isFavorite) {
+        showNotification(`${friend.name} added to favorites`);
+    } else {
+        showNotification(`${friend.name} removed from favorites`);
+    }
     
     // Update the display
     renderCurrentTab();
