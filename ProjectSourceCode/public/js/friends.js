@@ -36,6 +36,22 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
+// Copy invite link to clipboard
+window.copyInviteLink = async function() {
+    try {
+        const inviteLink = "https://bird-brain-1.onrender.com/login";
+        await navigator.clipboard.writeText(inviteLink);
+        showNotification("Invite link copied to clipboard!");
+    } catch (error) {
+        console.error('Failed to copy link:', error);
+        // Fallback for older browsers
+        const linkInput = document.getElementById('inviteLink');
+        linkInput.select();
+        document.execCommand('copy');
+        showNotification("Invite link copied to clipboard!");
+    }
+}
+
 // Load friends from database
 async function loadFriendsFromDatabase() {
     try {
@@ -399,11 +415,6 @@ function selectFriend(index) {
 // Render selected friend details
 async function renderSelectedFriend() {
     const postsSection = document.querySelector('.posts-section');
-
-    if (currentTab === 'invite') {
-        postsSection.innerHTML = '';
-        return;
-    }
 
     if (currentTab === 'requests') {
         postsSection.innerHTML = `
