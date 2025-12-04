@@ -194,6 +194,8 @@ app.get("/api/geocode/test", async (req, res) => {
   }
 });
 
+// REPLACE your /api/geocode route with this fixed version:
+
 app.get("/api/geocode", async (req, res) => {
   const text = req.query.text;
   if (!text) {
@@ -243,73 +245,42 @@ app.get("/api/geocode", async (req, res) => {
       text
     )}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
-    });
+    const response = await fetch(url);
 
     // Check if response is OK
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Mapbox API error (${response.status}):`, errorText.slice(0, 500));
+      console.error(`Mapbox API error (${response.status}):`, response.statusText);
       console.log("Falling back to OpenStreetMap...");
       
-      // Fallback to OpenStreetMap
       const osmResult = await geocodeWithOpenStreetMap(text);
       if (osmResult) {
         return res.json(osmResult);
       }
       
       return res.json({ 
-        error: `Geocoding failed: ${response.status} ${response.statusText}`,
-        details: errorText.slice(0, 200)
+        error: `Geocoding failed: ${response.status} ${response.statusText}`
       });
     }
 
-    const contentType = response.headers.get("content-type") || "";
-
-    // Read the body once as text so we can handle both JSON and HTML safely
-    const bodyText = await response.text();
-
-    // If Mapbox (or some proxy) sends HTML, fall back to OpenStreetMap
-    if (!contentType.includes("application/json")) {
-      console.warn(
-        "Mapbox geocode response is not JSON. Body preview:\n",
-        bodyText.slice(0, 500)
-      );
-      console.log("Falling back to OpenStreetMap...");
-      
-      // Fallback to OpenStreetMap
-      const osmResult = await geocodeWithOpenStreetMap(text);
-      if (osmResult) {
-        return res.json(osmResult);
-      }
-      
-      return res.json({ 
-        error: "Invalid response from geocoding service. Your Mapbox API key may be invalid or expired.",
-        details: bodyText.slice(0, 200),
-        suggestion: "Check your Mapbox API key or the service will use OpenStreetMap as fallback"
-      });
-    }
-
+    // Try to parse as JSON
     let data;
     try {
-      data = JSON.parse(bodyText);
+      data = await response.json();
     } catch (parseErr) {
-      console.error(
-        "Failed to parse Mapbox JSON:",
-        parseErr,
-        "\nBody preview:\n",
-        bodyText.slice(0, 500)
-      );
+      console.error("Failed to parse Mapbox response as JSON:", parseErr);
+      console.log("Falling back to OpenStreetMap...");
+      
+      const osmResult = await geocodeWithOpenStreetMap(text);
+      if (osmResult) {
+        return res.json(osmResult);
+      }
+      
       return res.json({ 
-        error: "Failed to parse geocoding response",
-        details: bodyText.slice(0, 200)
+        error: "Failed to parse geocoding response"
       });
     }
 
-    // Check for Mapbox API errors
+    // Check for Mapbox API errors in the response
     if (data.message) {
       console.error("Mapbox API error:", data.message);
       return res.json({ 
@@ -317,6 +288,7 @@ app.get("/api/geocode", async (req, res) => {
       });
     }
 
+    // Check if we got results
     if (!data.features || data.features.length === 0) {
       console.log(`No results found for: "${text}"`);
       return res.json({ 
@@ -339,9 +311,26 @@ app.get("/api/geocode", async (req, res) => {
     const [lng, lat] = first.center;
 
     console.log(`Geocoded "${text}" to: ${lat}, ${lng}`);
-    return res.json({ lat, lng, place_name: first.place_name || text });
+    return res.json({ 
+      lat, 
+      lng, 
+      place_name: first.place_name || text,
+      source: "Mapbox"
+    });
+
   } catch (err) {
-    console.error("Mapbox geocode failed:", err);
+    console.error("Geocoding error:", err);
+    
+    // Try OpenStreetMap as final fallback
+    try {
+      const osmResult = await geocodeWithOpenStreetMap(text);
+      if (osmResult) {
+        return res.json(osmResult);
+      }
+    } catch (osmErr) {
+      console.error("OpenStreetMap fallback also failed:", osmErr);
+    }
+    
     return res.json({ 
       error: "Geocoding service unavailable. Please try again later.",
       details: err.message
