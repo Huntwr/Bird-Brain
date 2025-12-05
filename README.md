@@ -1,10 +1,9 @@
 # Bird-Brain
- An app that allows you to identify and log birds that you find around you. You can upload a picture and description of the bird you found as well as seeing where your friends have also uploaded birds. 
+Bird Brain is a social bird tracking application that allows users to identify and log bird sightings from anywhere. Users can upload photos, add descriptions, and record the exact location of birds they encounter. The application displays user and community sightings on an interactive map, letting outdoor enthusiasts and casual members to explore discoveries made by friends in real time.
 
 Audience: The target audience is for people who love birds and the outdoors (bird watchers).
 
-Vision Statement: For bird enthusiasts and outdoor explorers who want to discover, identify, and share bird sightings in their local environment, Bird Brain is a social wildlife tracking app that makes birdwatching interactive, educational, and community driven. Our product connects users through shared discoveries, allowing them to log sightings, upload photos, and explore their friends' birding activity in real time.
-
+Vision Statement: For bird enthusiasts and outdoor explorers who want to discover, identify, and share bird sightings in their environment, Bird Brain is an interactive social application that enables logging, identifying, and exploring birds on a map in real time. Users can upload sightings, view friends' activity, and collaborate in a shared birding community.
 
 Contributors
 
