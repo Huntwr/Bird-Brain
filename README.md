@@ -1,5 +1,5 @@
 # Bird-Brain
-Bird Brain is a social bird tracking application that allows users to identify and log bird sightings from anywhere. Users can upload photos, add descriptions, and record the exact location of birds they encounter. The application displays user and community sightings on an interactive map, letting outdoor enthusiasts and casual members to explore discoveries made by friends in real time.
+Bird Brain is a social bird tracking application that allows users to identify and log bird sightings from anywhere. Users can upload photos, add descriptions, and record the exact location of birds they encounter. The application displays user and community sightings on an interactive map, letting outdoor enthusiasts and casual members explore discoveries made by friends in real time.
 
 Audience: The target audience is for people who love birds and the outdoors (bird watchers).
 
@@ -21,34 +21,42 @@ Frontend | Handlebars, HTML/CSS/JavaScript
 Backend | Node.js with Express  
 Database | PostgreSQL  
 Mapping API | Mapbox API  
-Additional APIs | eBird API, Google Gemini API 
+Additional APIs | eBird API, Google Gemini API  
 Containerization | Docker and Docker Compose  
 Version Control | GitHub  
 Testing | Mocha and Chai  
-Deployment | Render 
+Deployment | Render  
 
-Prerequisites to run the application:
+---
 
-- Docker Desktop installed  
+## Prerequisites to run the application:
+
+- **Docker Desktop installed**  
   The application runs inside Docker containers. You must be able to run `docker compose` commands.
 
-- Git installed  
+- **Git installed**  
   Used to clone the repository.
 
 No other local dependencies are required as Node.js and PostgreSQL are handled within Docker.
 
-Instructions on how to run the application locally with Docker:
+---
 
-1. Clone repository
-2. cd ProjectSourceCode
-3. docker compose up
-4. Visit http://localhost:3000
+## Instructions on how to run the application locally with Docker:
 
-How to Run Tests in Docker:
+1. **Clone the repository**
+2. **cd ProjectSourceCode**
+3. **docker compose up**
+4. **Visit http://localhost:3000**
 
-1. cd ProjectSourceCode
-2. docker compose up --build
-3. docker compose exec web npm test
+---
 
+## How to Run Tests in Docker:
 
-Link to the deployed application: https://bird-brain-1.onrender.com/
+1. **cd ProjectSourceCode**
+2. **docker compose up --build**
+3. **docker compose exec web npm test**
+
+---
+
+## Link to the deployed application:
+https://bird-brain-1.onrender.com/
