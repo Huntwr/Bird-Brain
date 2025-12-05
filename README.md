@@ -27,6 +27,16 @@ Version Control | GitHub
 Testing | Mocha and Chai  
 Deployment | Render 
 
+Prerequisites to run the application:
+
+- Docker Desktop installed  
+  The application runs inside Docker containers. You must be able to run `docker compose` commands.
+
+- Git installed  
+  Used to clone the repository.
+
+No other local dependencies are required as Node.js and PostgreSQL are handled within Docker.
+
 Instructions on how to run the application locally with Docker:
 
 1. Clone repository
