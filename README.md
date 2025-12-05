@@ -5,18 +5,40 @@ Audience: The target audience is for people who love birds and the outdoors (bir
 
 Vision Statement: For bird enthusiasts and outdoor explorers who want to discover, identify, and share bird sightings in their environment, Bird Brain is an interactive social application that enables logging, identifying, and exploring birds on a map in real time. Users can upload sightings, view friends' activity, and collaborate in a shared birding community.
 
-Contributors
+## Contributors
+| Name | Email | GitHub |
+|-----|-------|--------|
+| Aaron Duong | aadu7536@colorado.edu | Aaronduo7536 |
+| Koa Lister | pali8174@colorado.edu | koalister |
+| Vinnie De Lisi | vide1065@colorado.edu | VinnieDeLisi |
+| Jackson Gothie | jago6572@colorado.edu | jackg22 |
+| Hunter Irish | huir2366@colorado.edu | Huntwr |
 
-Aaron Duong aadu7536@colorado.edu Aaronduo7536
+## Technology Stack
+| Layer | Technology |
+|------|------------|
+Frontend | Handlebars, HTML/CSS/JavaScript  
+Backend | Node.js with Express  
+Database | PostgreSQL  
+Mapping API | Mapbox API  
+Additional APIs | eBird API, Google Gemini API 
+Containerization | Docker and Docker Compose  
+Version Control | GitHub  
+Testing | Mocha and Chai  
+Deployment | Render 
 
-Koa Lister pali8174@colorado.edu koalister
+Instructions on how to run the application locally with Docker:
 
-Vinnie De Lisi vide1065@colorado.edu VinnieDeLisi
+1. Clone repository
+2. cd ProjectSourceCode
+3. docker compose up
+4. Visit http://localhost:3000
 
-Jackson Gothie jago6572@colorado.edu jackg22
+How to Run Tests in Docker:
 
-Hunter Irish huir2366@colorado.edu Huntwr
+1. cd ProjectSourceCode
+2. docker compose up --build
+3. docker compose exec web npm test
 
-Instructions on how to run the application locally TBD 
-How to run the tests TBD 
-Link to the deployed application TBD
+
+Link to the deployed application: https://bird-brain-1.onrender.com/
