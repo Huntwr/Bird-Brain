@@ -60,3 +60,6 @@ No other local dependencies are required as Node.js and PostgreSQL are handled w
 
 ## Link to the deployed application:
 https://bird-brain-1.onrender.com/
+
+## Link to demo video:
+https://drive.google.com/file/d/1rOAa922UfnyuVtoYGObPd4R_10GYPgpS/view?usp=sharing 
